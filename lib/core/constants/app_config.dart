@@ -8,8 +8,10 @@ class AppConfig {
   // ── Environment toggle ─────────────────────────────────────────────────────
 
   /// When `true` every service returns fake data; no real HTTP is made.
-  /// Flip to `false` when the backend is ready.
-  static const bool useMock = true;
+  /// Flip to `false` when the backend is running.
+  /// On Android emulator, the server at localhost is reachable via 10.0.2.2.
+  /// On physical device, replace apiUrl with your machine's local IP (e.g. 192.168.x.x).
+  static bool useMock = true;
 
   // ── API base URL ───────────────────────────────────────────────────────────
 
@@ -24,13 +26,4 @@ class AppConfig {
   /// How long to wait for a server response before giving up.
   static const Duration requestTimeout = Duration(seconds: 15);
 
-  // ── Legacy shims (remove once all callers are updated) ────────────────────
-
-  /// @deprecated — use [useMock] instead.
-  // ignore: non_constant_identifier_names
-  static const bool USE_MOCK = useMock;
-
-  /// @deprecated — use [apiUrl] instead.
-  // ignore: non_constant_identifier_names
-  static const String API_URL = apiUrl;
 }

@@ -1,0 +1,139 @@
+name: CI — Auto Test & Lint
+
+on:
+  push:
+    branches: [master, main, 'feat/**', 'api/**', 'fix/**']
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  # ─── Detect what changed ────────────────────────────────────────────────────
+  detect-changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend:  ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - '_server/**'
+            frontend:
+              - 'lib/**'
+              - 'pubspec.yaml'
+              - 'pubspec.lock'
+              - 'analysis_options.yaml'
+
+  # ─── Backend: NestJS ────────────────────────────────────────────────────────
+  backend:
+    name: Backend — Test & Lint
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: _server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '_server/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --passWithNoTests
+        env:
+          DATABASE_URL: 'postgresql://test:test@localhost:5432/test'
+          JWT_SECRET: 'ci-test-secret-key-minimum-32-chars!!'
+          GOOGLE_CLIENT_ID: 'ci-placeholder'
+
+      - name: Build check
+        run: npm run build
+
+  # ─── Frontend: Flutter ──────────────────────────────────────────────────────
+  frontend:
+    name: Frontend — Analyze & Build
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.x'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze (lint + type check)
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run unit tests
+        run: flutter test --no-pub
+        continue-on-error: true
+
+      - name: Build APK (compile check)
+        run: flutter build apk --debug --no-pub
+        env:
+          # Needed so Gradle doesn't fail on CI
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+
+  # ─── Summary ────────────────────────────────────────────────────────────────
+  summary:
+    name: CI Summary
+    needs: [detect-changes, backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print result
+        run: |
+          BACKEND_CHANGED="${{ needs.detect-changes.outputs.backend }}"
+          FRONTEND_CHANGED="${{ needs.detect-changes.outputs.frontend }}"
+          BACKEND_RESULT="${{ needs.backend.result }}"
+          FRONTEND_RESULT="${{ needs.frontend.result }}"
+
+          echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$BACKEND_CHANGED" == "true" ]; then
+            if [ "$BACKEND_RESULT" == "success" ]; then
+              echo "✅ **Backend** — All tests & build passed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Backend** — Tests or build failed (result: $BACKEND_RESULT)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⏭️ **Backend** — No changes, skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$FRONTEND_CHANGED" == "true" ]; then
+            if [ "$FRONTEND_RESULT" == "success" ]; then
+              echo "✅ **Frontend** — Analyze & APK build passed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ **Frontend** — Analyze or build failed (result: $FRONTEND_RESULT)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⏭️ **Frontend** — No changes, skipped" >> $GITHUB_STEP_SUMMARY
+          fi

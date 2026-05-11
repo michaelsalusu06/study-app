@@ -5,38 +5,19 @@ import 'package:http/http.dart' as http;
 import '../constants/app_config.dart';
 import 'auth_state.dart';
 
-/// Centralised service for all authentication operations.
-///
-/// Always use [AuthService.instance] — never construct directly.
-///
-/// ```dart
-/// final result = await AuthService.instance.login(
-///   email: 'user@example.com',
-///   password: 'secret',
-/// );
-/// if (result.success) {
-///   Navigator.of(context).pushReplacementNamed(result.dashboardRoute);
-/// } else {
-///   showError(result.errorMessage!);
-/// }
-/// ```
 class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
-  /// POST /auth/login
-  ///
-  /// On success: populates [AuthState] and returns [AuthResult.success].
-  /// On failure: returns [AuthResult.error] — never throws.
   Future<AuthResult> login({
     required String email,
     required String password,
   }) async {
     if (AppConfig.useMock) {
       await Future.delayed(const Duration(milliseconds: 800));
-      _applyMockState(email: email, role: 'STUDENT');
+      await _applyMockState(email: email, role: 'STUDENT');
       return AuthResult.success(role: 'STUDENT');
     }
 
@@ -52,12 +33,12 @@ class AuthService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        AuthState.instance.setFromResponse(data);
+        await AuthState.instance.setFromResponse(data);
         return AuthResult.success(role: AuthState.instance.role ?? 'STUDENT');
       }
 
       return AuthResult.error(
-        data['message']?.toString() ?? 'Login failed (${response.statusCode})',
+        _extractMessage(data, response.statusCode),
       );
     } on Exception catch (e) {
       return AuthResult.error(_friendlyError(e));
@@ -66,18 +47,15 @@ class AuthService {
 
   // ── Register ───────────────────────────────────────────────────────────────
 
-  /// POST /auth/signup
-  ///
-  /// On success: populates [AuthState] and returns [AuthResult.success].
-  /// On failure: returns [AuthResult.error] — never throws.
   Future<AuthResult> register({
     required String email,
     required String password,
+    String role = 'STUDENT',
   }) async {
     if (AppConfig.useMock) {
       await Future.delayed(const Duration(milliseconds: 800));
-      _applyMockState(email: email, role: 'STUDENT');
-      return AuthResult.success(role: 'STUDENT');
+      await _applyMockState(email: email, role: role);
+      return AuthResult.success(role: role);
     }
 
     try {
@@ -85,21 +63,18 @@ class AuthService {
           .post(
             Uri.parse('${AppConfig.apiUrl}/auth/signup'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email, 'password': password}),
+            body: jsonEncode({'email': email, 'password': password, 'role': role}),
           )
           .timeout(AppConfig.requestTimeout);
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        AuthState.instance.setFromResponse(data);
+        await AuthState.instance.setFromResponse(data);
         return AuthResult.success(role: AuthState.instance.role ?? 'STUDENT');
       }
 
-      return AuthResult.error(
-        data['message']?.toString() ??
-            'Registration failed (${response.statusCode})',
-      );
+      return AuthResult.error(_extractMessage(data, response.statusCode));
     } on Exception catch (e) {
       return AuthResult.error(_friendlyError(e));
     }
@@ -111,29 +86,35 @@ class AuthService {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  void _applyMockState({required String email, required String role}) {
-    AuthState.instance
-      ..accessToken = 'mock-token'
-      ..userId = 'mock-user-1'
-      ..email = email
-      ..role = role
-      ..fullName = 'Muh Daffa Dwi S.';
+  Future<void> _applyMockState({required String email, required String role}) async {
+    await AuthState.instance.setFromResponse({
+      'access_token': 'mock-token',
+      'user': {
+        'id': 'mock-user-1',
+        'email': email,
+        'role': role,
+        'full_name': 'Muh Daffa Dwi S.',
+      },
+    });
+  }
+
+  String _extractMessage(Map<String, dynamic> data, int statusCode) {
+    final raw = data['message'];
+    if (raw is List) return raw.first.toString();
+    return raw?.toString() ?? 'Request failed ($statusCode)';
   }
 
   String _friendlyError(Exception e) {
     final msg = e.toString();
     if (msg.contains('SocketException') || msg.contains('TimeoutException')) {
-      return 'No internet connection. Please check your network and try again.';
+      return 'No internet connection. Please check your network.';
     }
-    return 'Something went wrong. Please try again later.';
+    return 'Something went wrong. Please try again.';
   }
 }
 
 // ── Result type ────────────────────────────────────────────────────────────────
 
-/// Returned by every [AuthService] operation.
-///
-/// Check [success] before reading [role] or [errorMessage].
 class AuthResult {
   final bool success;
   final String? role;
@@ -151,7 +132,6 @@ class AuthResult {
   factory AuthResult.error(String message) =>
       AuthResult._(success: false, errorMessage: message);
 
-  /// The named route for the appropriate dashboard based on [role].
   String get dashboardRoute =>
       (role?.toUpperCase() == 'TUTOR') ? '/teacher-dashboard' : '/student-dashboard';
 }

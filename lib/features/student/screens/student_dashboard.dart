@@ -3,10 +3,12 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/auth_state.dart';
+import '../../../core/services/user_api_service.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/inputs/search_input.dart';
 import '../../../core/widgets/common/empty_state.dart';
-import '../../../data/dummy_data.dart';
+import '../../../core/widgets/common/loading_widget.dart';
+import '../../../core/widgets/inputs/search_input.dart';
+import '../../../models/tutor_profile.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -30,11 +32,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
       extendBody: true,
       body: Stack(
         children: [
-          // Background gradient — guaranteed to fill the entire screen
           Positioned.fill(
             child: DecoratedBox(decoration: const BoxDecoration(gradient: _gradient)),
           ),
-          // Tab content
           IndexedStack(
             index: _currentIndex,
             children: const [
@@ -87,15 +87,47 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 }
 
-class _HomeTab extends StatelessWidget {
+// ─── Home Tab ────────────────────────────────────────────────────────────────
+
+class _HomeTab extends StatefulWidget {
   const _HomeTab();
 
   @override
-  Widget build(BuildContext context) {
-    if (DummyData.teachers.isEmpty) {
-      return const EmptyState(message: 'No tutors available');
-    }
+  State<_HomeTab> createState() => _HomeTabState();
+}
 
+class _HomeTabState extends State<_HomeTab> {
+  List<TutorProfile>? _tutors;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTutors();
+  }
+
+  Future<void> _loadTutors() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final result = await UserApiService.instance.getTutors();
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      if (result.success) {
+        _tutors = result.tutors;
+      } else {
+        _error = result.errorMessage;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -103,7 +135,7 @@ class _HomeTab extends StatelessWidget {
         _buildSectionLabel('Search Tutor by Topic >'),
         _buildTopicsGrid(),
         _buildSectionLabel('Top Rated Tutor >'),
-        _buildTutorList(context),
+        _buildTutorSection(context),
         const SizedBox(height: 110),
       ],
     );
@@ -142,7 +174,12 @@ class _HomeTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SearchInput(hint: 'Search tutor...'),
+                  SearchInput(
+                    hint: 'Search tutor...',
+                    onChanged: (value) {
+                      // TODO: wire to _loadTutors(search: value) with debounce
+                    },
+                  ),
                   const Divider(height: 32),
                   _buildUpcomingDetail(context),
                 ],
@@ -166,13 +203,12 @@ class _HomeTab extends StatelessWidget {
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
               ),
               Text(
-                'Dr. Amba Rusdi, S.Kom.',
+                'No upcoming session',
                 style: AppTypography.title(context).copyWith(fontSize: 14),
               ),
             ],
           ),
         ),
-        // Constrained Join button — avoids PrimaryButton's full-width SizedBox
         SizedBox(
           width: 64,
           height: 36,
@@ -184,7 +220,7 @@ class _HomeTab extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Join', style: TextStyle(fontSize: 13)),
+            child: const Text('Book', style: TextStyle(fontSize: 13)),
           ),
         ),
       ],
@@ -197,7 +233,7 @@ class _HomeTab extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: Color(0xFF1A237E), // dark navy — readable on the light-blue lower gradient
+          color: Color(0xFF1A237E),
           fontSize: 14,
           fontWeight: FontWeight.bold,
         ),
@@ -225,7 +261,7 @@ class _HomeTab extends StatelessWidget {
         crossAxisCount: 4,
         mainAxisSpacing: 10,
       ),
-      itemCount: 8,
+      itemCount: topics.length,
       itemBuilder: (context, i) => Column(
         children: [
           Container(
@@ -235,10 +271,13 @@ class _HomeTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
             ),
-            child: const Icon(Icons.book, color: AppColors.primary),
+            child: Icon(icons[i], color: AppColors.primary),
           ),
           const SizedBox(height: 4),
-          const Text('Topic', style: TextStyle(color: Color(0xFF1A237E), fontSize: 10)),
+          Text(
+            topics[i],
+            style: const TextStyle(color: Color(0xFF1A237E), fontSize: 10),
+          ),
         ],
       ),
       itemCount: topics.length,
@@ -273,8 +312,43 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildTutorList(BuildContext context) {
-    final teachers = DummyData.teachers;
+  Widget _buildTutorSection(BuildContext context) {
+    if (_isLoading) {
+      return SizedBox(
+        height: 160,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
+          itemCount: 4,
+          itemBuilder: (_, __) => _buildTutorSkeleton(),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSizes.lg),
+        child: Column(
+          children: [
+            Text(
+              'Could not load tutors',
+              style: const TextStyle(color: Color(0xFF1A237E), fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: _loadTutors,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_tutors == null || _tutors!.isEmpty) {
+      return const EmptyState(message: 'No tutors available');
+    }
+
     return SizedBox(
       height: 170,
       child: ListView.builder(
@@ -295,6 +369,7 @@ class _HomeTab extends StatelessWidget {
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 CircleAvatar(
                   radius: 26,
@@ -303,16 +378,55 @@ class _HomeTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  teacher.user.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  tutor.overallRating!.toStringAsFixed(1),
+                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                 ),
-                Text(expertise, style: const TextStyle(fontSize: 10, color: AppColors.textDisabled)),
               ],
             ),
-          );
-        },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTutorSkeleton() {
+    return Container(
+      width: 140,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ShimmerLoading(
+            child: CircleAvatar(radius: 25, backgroundColor: AppColors.surfaceContainerHigh),
+          ),
+          const SizedBox(height: 8),
+          ShimmerLoading(
+            child: Container(
+              height: 12,
+              width: 80,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          ShimmerLoading(
+            child: Container(
+              height: 10,
+              width: 55,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

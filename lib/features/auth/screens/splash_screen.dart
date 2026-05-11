@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/services/auth_state.dart';
 import '../../../routes/app_routes.dart';
 
 /// Modern splash screen with animated logo
@@ -53,12 +54,23 @@ class _SplashScreenState extends State<SplashScreen>
     _navigateToNextScreen();
   }
 
-  void _navigateToNextScreen() {
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.onboarding);
-      }
-    });
+  void _navigateToNextScreen() async {
+    // Run auth restore + minimum splash delay in parallel
+    await Future.wait([
+      AuthState.instance.restore(),
+      Future.delayed(const Duration(milliseconds: 2500)),
+    ]);
+
+    if (!mounted) return;
+
+    if (AuthState.instance.isLoggedIn) {
+      final route = AuthState.instance.role?.toUpperCase() == 'TUTOR'
+          ? AppRoutes.teacherDashboard
+          : AppRoutes.studentDashboard;
+      Navigator.of(context).pushReplacementNamed(route);
+    } else {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.onboarding);
+    }
   }
 
   @override

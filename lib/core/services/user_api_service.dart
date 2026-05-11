@@ -3,50 +3,16 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../constants/app_config.dart';
+import '../../data/dummy_data.dart';
+import '../../models/tutor_profile.dart';
 import 'auth_state.dart';
 
-/// Global service for all user-related API calls.
-/// Use [UserApiService.instance] to access it anywhere in the app.
-///
-/// Example:
-/// ```dart
-/// final result = await UserApiService.instance.updateProfile(
-///   username: 'john_doe',
-///   fullName: 'John Doe',
-///   role: 'STUDENT',
-/// );
-/// ```
 class UserApiService {
   UserApiService._();
   static final UserApiService instance = UserApiService._();
 
   // ─── Update Profile ───────────────────────────────────────────────────────
 
-  /// PATCH /user/update/profile
-  ///
-  /// Updates the authenticated user's profile. All fields are optional —
-  /// only include the ones you want to change.
-  ///
-  /// Requires the user to be logged in ([AuthState.instance.isLoggedIn] == true).
-  ///
-  /// Returns an [UpdateProfileResult] with either the updated user data or an
-  /// error message. Never throws — errors are returned in the result object.
-  ///
-  /// Example:
-  /// ```dart
-  /// final result = await UserApiService.instance.updateProfile(
-  ///   username: 'john_doe',
-  ///   fullName: 'John Doe',
-  ///   bio: 'I love math',
-  ///   role: 'STUDENT',
-  /// );
-  ///
-  /// if (result.success) {
-  ///   print('Updated: ${result.user}');
-  /// } else {
-  ///   print('Error: ${result.errorMessage}');
-  /// }
-  /// ```
   Future<UpdateProfileResult> updateProfile({
     String? username,
     String? fullName,
@@ -66,11 +32,13 @@ class UserApiService {
     if (role != null) body['role'] = role;
 
     try {
-      final response = await http.patch(
-        Uri.parse('${AppConfig.apiUrl}/user/update/profile'),
-        headers: AuthState.instance.authHeaders,
-        body: jsonEncode(body),
-      );
+      final response = await http
+          .patch(
+            Uri.parse('${AppConfig.apiUrl}/user/update/profile'),
+            headers: AuthState.instance.authHeaders,
+            body: jsonEncode(body),
+          )
+          .timeout(AppConfig.requestTimeout);
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -81,12 +49,59 @@ class UserApiService {
       final message = data['message']?.toString() ?? 'Update failed (${response.statusCode})';
       return UpdateProfileResult.error(message);
     } catch (e) {
-      return UpdateProfileResult.error('Network error: $e');
+      return UpdateProfileResult.error('Network error. Please try again.');
+    }
+  }
+
+  // ─── Get Tutors ───────────────────────────────────────────────────────────
+
+  Future<TutorListResult> getTutors({
+    String? search,
+    String? subject,
+    double? maxPrice,
+  }) async {
+    if (AppConfig.useMock) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      final mockTutors = DummyData.teachers.map((t) => TutorProfile(
+            id: t.id,
+            fullName: t.user.name,
+            subjects: t.expertise,
+            bookPrice: t.hourlyRate ?? 0,
+            overallRating: t.rating,
+            ratingCount: t.totalReviews,
+            avatarUrl: null,
+          )).toList();
+      return TutorListResult.success(mockTutors);
+    }
+
+    final queryParams = <String, String>{};
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+    if (subject != null && subject.isNotEmpty) queryParams['subject'] = subject;
+    if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();
+
+    final uri = Uri.parse('${AppConfig.apiUrl}/user/tutors')
+        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+    try {
+      final response = await http
+          .get(uri, headers: {'Content-Type': 'application/json'})
+          .timeout(AppConfig.requestTimeout);
+
+      if (response.statusCode == 200) {
+        final list = jsonDecode(response.body) as List;
+        return TutorListResult.success(
+          list.map((e) => TutorProfile.fromJson(e as Map<String, dynamic>)).toList(),
+        );
+      }
+
+      return TutorListResult.error('Failed to load tutors (${response.statusCode})');
+    } catch (e) {
+      return TutorListResult.error('Network error. Please try again.');
     }
   }
 }
 
-// ─── Result Model ─────────────────────────────────────────────────────────────
+// ─── Result Models ────────────────────────────────────────────────────────────
 
 class UpdateProfileResult {
   final bool success;
@@ -104,4 +119,22 @@ class UpdateProfileResult {
 
   factory UpdateProfileResult.error(String message) =>
       UpdateProfileResult._(success: false, errorMessage: message);
+}
+
+class TutorListResult {
+  final bool success;
+  final List<TutorProfile>? tutors;
+  final String? errorMessage;
+
+  const TutorListResult._({
+    required this.success,
+    this.tutors,
+    this.errorMessage,
+  });
+
+  factory TutorListResult.success(List<TutorProfile> tutors) =>
+      TutorListResult._(success: true, tutors: tutors);
+
+  factory TutorListResult.error(String message) =>
+      TutorListResult._(success: false, errorMessage: message);
 }
