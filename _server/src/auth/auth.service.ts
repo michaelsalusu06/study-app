@@ -134,6 +134,16 @@ export class AuthService {
     return user;
   }
 
+  // ⚠️ TEMP — DEV ONLY. REMOVE BEFORE PRODUCTION / DEMO.
+  async devToken(email: string) {
+    const user = await this.prisma.profiles.findUnique({ where: { email } });
+    if (!user) throw new NotFoundException(`No user with email: ${email}`);
+    return {
+      ...this.generateTokens(user.id, user.email!, user.role),
+      warning: 'DEV TOKEN — remove /auth/dev-token endpoint before production',
+    };
+  }
+
   private generateTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
 

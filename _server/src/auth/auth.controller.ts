@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/signup.dto';
@@ -34,5 +34,19 @@ export class AuthController {
   getMe(@Request() req: any) {
     const userId = req.user.userId || req.user.sub;
     return this.authService.getMe(userId);
+  }
+
+  // ⚠️ TEMP — DEV ONLY. REMOVE THIS BEFORE PRODUCTION / DEMO.
+  // Returns a real JWT for any existing user email without password.
+  // Only works when NODE_ENV !== 'production'.
+  // Usage: GET /auth/dev-token?email=you@example.com
+  @Get('dev-token')
+  async devToken(@Request() req: any) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Not available in production.');
+    }
+    const email = req.query?.email as string;
+    if (!email) throw new ForbiddenException('Provide ?email=...');
+    return this.authService.devToken(email);
   }
 }
