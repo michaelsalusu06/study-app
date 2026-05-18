@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CoinsService } from './coins.service';
 import { CreatePaymentOrderDto } from './dto/create-payment-order.dto';
@@ -35,6 +35,15 @@ export class CoinsController {
   @Post('webhook/midtrans')
   midtransWebhook(@Body() body: any) {
     return this.coinsService.handleMidtransWebhook(body);
+  }
+
+  // Dev-only: manually fulfill an order (remove before prod)
+  @Post('dev/fulfill/:orderId')
+  devFulfill(@Param('orderId') orderId: string) {
+    if (process.env.MIDTRANS_SERVER_KEY) {
+      return { message: 'Dev fulfill disabled in production.' };
+    }
+    return this.coinsService.fulfillOrder(orderId);
   }
 
   // Tutor requests to cash out coins → IDR

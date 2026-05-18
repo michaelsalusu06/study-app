@@ -78,6 +78,21 @@ export class CoinsService {
       },
     });
 
+    // Skip Midtrans if no server key configured (dev/test mode)
+    if (!process.env.MIDTRANS_SERVER_KEY) {
+      return {
+        order_id: order.id,
+        coins_amount: pkg.coins,
+        idr_amount: pkg.fiat,
+        currency: 'IDR',
+        qr_string: null,
+        qr_code_url: null,
+        expires_in_minutes: 30,
+        status: 'PENDING',
+        dev_note: 'MIDTRANS_SERVER_KEY not set. Use POST /coins/dev/fulfill/:order_id to complete.',
+      };
+    }
+
     // Create QRIS via Midtrans Core API
     const midtransRes = await fetch(`${this.midtransBaseUrl}/v2/charge`, {
       method: 'POST',
@@ -143,10 +158,12 @@ export class CoinsService {
       throw new BadRequestException('Invalid webhook payload.');
     }
 
-    // Verify signature
-    const expected = this.computeMidtransSignature(order_id, status_code, gross_amount);
-    if (signature_key !== expected) {
-      throw new UnauthorizedException('Invalid Midtrans signature.');
+    // Verify signature (skip in dev when no key set)
+    if (process.env.MIDTRANS_SERVER_KEY) {
+      const expected = this.computeMidtransSignature(order_id, status_code, gross_amount);
+      if (signature_key !== expected) {
+        throw new UnauthorizedException('Invalid Midtrans signature.');
+      }
     }
 
     if (transaction_status === 'settlement' || transaction_status === 'capture') {
