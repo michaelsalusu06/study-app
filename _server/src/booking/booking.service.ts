@@ -48,6 +48,22 @@ export class BookingService {
 
     if (tutorId === studentId) throw new BadRequestException('Cannot book yourself.');
 
+    // Conflict check: reject if tutor has a pending/confirmed booking that overlaps
+    const newStart = new Date(dto.startAt);
+    const conflict = await this.prisma.bookings.findFirst({
+      where: {
+        tutor_id: tutorId,
+        status: { in: ['pending', 'confirmed'] },
+        start_at: { lt: endAt },
+        end_at: { gt: newStart },
+      },
+    });
+    if (conflict) {
+      throw new BadRequestException(
+        `Tutor is already booked from ${conflict.start_at.toISOString()} to ${conflict.end_at.toISOString()}.`,
+      );
+    }
+
     const coinsCost = Math.ceil((coinRatePerHour * durationMinutes) / 60);
     const price = 0;
 
@@ -98,7 +114,7 @@ export class BookingService {
           profile_id: studentId,
           amount: -coinsCost,
           kind: 'BOOKING_PAYMENT',
-          note: `Booking with tutor — ${dto.durationMinutes} min`,
+          note: `Booking with tutor — ${durationMinutes} min`,
         },
       }),
       this.prisma.notifications.create({
@@ -109,6 +125,41 @@ export class BookingService {
         },
       }),
     ]);
+
+    return booking;
+  }
+
+  async getBookingById(bookingId: string, userId: string) {
+    const booking = await this.prisma.bookings.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        start_at: true,
+        end_at: true,
+        duration_minutes: true,
+        price: true,
+        coins_cost: true,
+        status: true,
+        created_at: true,
+        updated_at: true,
+        profiles_bookings_tutor_idToprofiles: {
+          select: { id: true, full_name: true, avatar_url: true, username: true },
+        },
+        profiles_bookings_student_idToprofiles: {
+          select: { id: true, full_name: true, avatar_url: true, username: true },
+        },
+        tutor_offers: {
+          select: { id: true, title: true, duration_minutes: true },
+        },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found.');
+
+    const isParticipant =
+      booking.profiles_bookings_student_idToprofiles.id === userId ||
+      booking.profiles_bookings_tutor_idToprofiles.id === userId;
+    if (!isParticipant) throw new ForbiddenException('Not your booking.');
 
     return booking;
   }

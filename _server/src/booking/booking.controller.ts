@@ -40,6 +40,13 @@ export class BookingController {
     return this.bookingService.getTutorBookings(userId);
   }
 
+  // GET /booking/:id — student or tutor fetches a single booking detail
+  @Get(':id')
+  getBookingById(@Param('id') id: string, @Request() req: any) {
+    const userId = req.user.userId || req.user.sub;
+    return this.bookingService.getBookingById(id, userId);
+  }
+
   // PATCH /booking/:id/cancel
   @Patch(':id/cancel')
   cancelBooking(@Param('id') id: string, @Request() req: any) {
