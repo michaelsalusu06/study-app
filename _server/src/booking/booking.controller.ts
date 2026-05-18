@@ -53,4 +53,11 @@ export class BookingController {
     const userId = req.user.userId || req.user.sub;
     return this.bookingService.confirmBooking(id, userId);
   }
+
+  // PATCH /booking/:id/complete — tutor marks session done, releases coins to tutor
+  @Patch(':id/complete')
+  completeBooking(@Param('id') id: string, @Request() req: any) {
+    const userId = req.user.userId || req.user.sub;
+    return this.bookingService.completeBooking(id, userId);
+  }
 }

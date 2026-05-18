@@ -8,6 +8,9 @@ import { UserModule } from './user/user.module';
 import { BookingModule } from './booking/booking.module';
 import { AdminModule } from './admin/admin.module';
 import { CoinsModule } from './coins/coins.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { OffersModule } from './offers/offers.module';
 
 @Module({
   imports: [
@@ -18,6 +21,9 @@ import { CoinsModule } from './coins/coins.module';
     BookingModule,
     AdminModule,
     CoinsModule,
+    ReviewsModule,
+    NotificationsModule,
+    OffersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

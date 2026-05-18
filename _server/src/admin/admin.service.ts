@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma.service';
 import { EncryptionService } from 'src/common/encryption/encryption.service';
 import { VerifyTutorDto } from './dto/verify-tutor.dto';
 import { ProcessRefundDto } from './dto/process-refund.dto';
+import { ProcessWithdrawalDto } from './dto/process-withdrawal.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { hash } from 'argon2';
 
@@ -349,6 +350,87 @@ export class AdminService {
 
     // TODO: trigger actual fiat refund via payment provider SDK
     return { message: 'Refund approved. Coins deducted.', coins_refunded: order.coins_amount };
+  }
+
+  async getWithdrawalRequests(page = 1, limit = 20, status?: string) {
+    const skip = (page - 1) * limit;
+    const where = status ? { status } : {};
+    const [requests, total] = await Promise.all([
+      this.prisma.withdrawal_requests.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        include: {
+          profiles: { select: { id: true, email: true, full_name: true } },
+        },
+      }),
+      this.prisma.withdrawal_requests.count({ where }),
+    ]);
+    return { data: requests, total, page, limit };
+  }
+
+  async processWithdrawal(adminId: string, withdrawalId: string, dto: ProcessWithdrawalDto) {
+    const withdrawal = await this.prisma.withdrawal_requests.findUnique({
+      where: { id: withdrawalId },
+    });
+
+    if (!withdrawal) throw new NotFoundException('Withdrawal request not found.');
+    if (withdrawal.status !== 'PENDING' && withdrawal.status !== 'APPROVED') {
+      throw new BadRequestException(`Cannot process a ${withdrawal.status} withdrawal.`);
+    }
+
+    const ops: any[] = [
+      this.prisma.withdrawal_requests.update({
+        where: { id: withdrawalId },
+        data: {
+          status: dto.decision,
+          admin_notes: dto.admin_notes,
+          processed_by: adminId,
+          updated_at: new Date(),
+        },
+      }),
+      this.prisma.notifications.create({
+        data: {
+          profile_id: withdrawal.tutor_id,
+          type: 'WITHDRAWAL_UPDATE',
+          payload: {
+            withdrawal_id: withdrawalId,
+            status: dto.decision,
+            coins_amount: withdrawal.coins_amount,
+            idr_amount: withdrawal.idr_amount,
+            admin_notes: dto.admin_notes,
+          },
+        },
+      }),
+    ];
+
+    // If rejected, refund coins back to tutor
+    if (dto.decision === 'REJECTED') {
+      ops.push(
+        this.prisma.profiles.update({
+          where: { id: withdrawal.tutor_id },
+          data: { coins_balance: { increment: withdrawal.coins_amount } },
+        }),
+        this.prisma.coin_transactions.create({
+          data: {
+            profile_id: withdrawal.tutor_id,
+            amount: withdrawal.coins_amount,
+            kind: 'ADJUSTMENT',
+            ref_id: withdrawalId,
+            note: `Withdrawal rejected — coins returned. ${dto.admin_notes ?? ''}`.trim(),
+          },
+        }),
+      );
+    }
+
+    await this.prisma.$transaction(ops);
+
+    return {
+      message: `Withdrawal ${dto.decision.toLowerCase()} successfully.`,
+      withdrawal_id: withdrawalId,
+      refunded_coins: dto.decision === 'REJECTED' ? withdrawal.coins_amount : 0,
+    };
   }
 
   async getBookings(page = 1, limit = 20) {

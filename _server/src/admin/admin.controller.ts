@@ -15,6 +15,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { AdminService } from './admin.service';
 import { VerifyTutorDto } from './dto/verify-tutor.dto';
 import { ProcessRefundDto } from './dto/process-refund.dto';
+import { ProcessWithdrawalDto } from './dto/process-withdrawal.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 
 @Controller('admin')
@@ -115,5 +116,32 @@ export class AdminController {
   processRefund(@Request() req: any, @Body() dto: ProcessRefundDto) {
     const adminId = req.user.userId || req.user.sub;
     return this.adminService.processRefund(adminId, dto);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @Get('withdrawals')
+  getWithdrawals(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.getWithdrawalRequests(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+      status,
+    );
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @Patch('withdrawals/:id')
+  processWithdrawal(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Body() dto: ProcessWithdrawalDto,
+  ) {
+    const adminId = req.user.userId || req.user.sub;
+    return this.adminService.processWithdrawal(adminId, id, dto);
   }
 }
