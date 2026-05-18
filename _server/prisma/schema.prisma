@@ -65,35 +65,65 @@ model notifications {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model profiles {
-  id                                     String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   full_name                              String?
   username                               String?
   avatar_url                             String?
   bio                                    String?
-  role                                   String                 @default("STUDENT")
-  book_price                             Decimal                @db.Decimal(10, 2)
+  role                                   String                @default("STUDENT")
+  /// PENDING | APPROVED | REJECTED — only set for TUTOR role
+  verification_status                    String?
+  book_price                             Decimal               @db.Decimal(10, 2)
   subjects                               String[]
-  created_at                             DateTime?              @default(now()) @db.Timestamptz(6)
-  updated_at                             DateTime?              @default(now()) @db.Timestamptz(6)
-  overall_rating                         Decimal?               @default(0) @db.Decimal
-  rating_count                           Int?                   @default(0)
-  tutor_rating                           Decimal?               @db.Decimal
-  student_rating                         Decimal?               @db.Decimal
-  email                                  String?                @unique
+  created_at                             DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime?             @default(now()) @db.Timestamptz(6)
+  overall_rating                         Decimal?              @default(0) @db.Decimal
+  rating_count                           Int?                  @default(0)
+  tutor_rating                           Decimal?              @db.Decimal
+  student_rating                         Decimal?              @db.Decimal
+  email                                  String?               @unique
+  /// Numeric 10-digit ID for ADMIN accounts — used instead of email for admin login
+  admin_id                               String?               @unique
   password                               String?
-  is_email_verified                      Boolean                @default(false)
-  bookings_bookings_student_idToprofiles bookings[]             @relation("bookings_student_idToprofiles")
-  bookings_bookings_tutor_idToprofiles   bookings[]             @relation("bookings_tutor_idToprofiles")
-  messages_messages_from_idToprofiles    messages[]             @relation("messages_from_idToprofiles")
-  messages_messages_to_idToprofiles      messages[]             @relation("messages_to_idToprofiles")
+  is_email_verified                      Boolean               @default(false)
+  coins_balance                          Int                   @default(0)
+  bookings_bookings_student_idToprofiles bookings[]            @relation("bookings_student_idToprofiles")
+  bookings_bookings_tutor_idToprofiles   bookings[]            @relation("bookings_tutor_idToprofiles")
+  messages_messages_from_idToprofiles    messages[]            @relation("messages_from_idToprofiles")
+  messages_messages_to_idToprofiles      messages[]            @relation("messages_to_idToprofiles")
   notifications                          notifications[]
-  reviews_reviews_reviewee_idToprofiles  reviews[]              @relation("reviews_reviewee_idToprofiles")
-  reviews_reviews_reviewer_idToprofiles  reviews[]              @relation("reviews_reviewer_idToprofiles")
+  reviews_reviews_reviewee_idToprofiles  reviews[]             @relation("reviews_reviewee_idToprofiles")
+  reviews_reviews_reviewer_idToprofiles  reviews[]             @relation("reviews_reviewer_idToprofiles")
   transactions                           transactions[]
   tutor_availabilities                   tutor_availabilities[]
   tutor_offers                           tutor_offers[]
+  tutor_verifications                    tutor_verifications?
+  coin_transactions                      coin_transactions[]
+  payment_orders                         payment_orders[]
 
   @@index([role], map: "idx_profiles_is_tutor")
+  @@index([verification_status], map: "idx_profiles_verification_status")
+}
+
+/// Stores encrypted PII for tutor identity verification. Admin-only read access.
+model tutor_verifications {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tutor_id        String    @unique @db.Uuid
+  /// AES-256-GCM encrypted phone number
+  phone_enc       String?
+  /// AES-256-GCM encrypted address
+  address_enc     String?
+  /// AES-256-GCM encrypted URL to uploaded government ID document
+  id_document_enc String?
+  /// AES-256-GCM encrypted JSON array of certificate URLs
+  cert_urls_enc   String?
+  submitted_at    DateTime? @default(now()) @db.Timestamptz(6)
+  reviewed_at     DateTime? @db.Timestamptz(6)
+  reviewed_by     String?   @db.Uuid
+  admin_notes     String?
+  profiles        profiles  @relation(fields: [tutor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tutor_id], map: "idx_tutor_verifications_tutor")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -169,6 +199,47 @@ model tutor_offers {
 
   @@index([is_active], map: "idx_tutor_offers_active")
   @@index([tutor_id], map: "idx_tutor_offers_tutor")
+}
+
+/// Coin ledger — one row per credit/debit event
+model coin_transactions {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_id  String    @db.Uuid
+  /// positive = credit, negative = debit
+  amount      Int
+  /// WELCOME_BONUS | PURCHASE | BOOKING_PAYMENT | REFUND | ADJUSTMENT
+  kind        String
+  /// ref to bookings.id or payment_orders.id if applicable
+  ref_id      String?   @db.Uuid
+  note        String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  profiles    profiles  @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([profile_id], map: "idx_coin_transactions_profile")
+}
+
+/// Tracks fiat payment sessions for coin purchases
+model payment_orders {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_id         String    @db.Uuid
+  coins_amount       Int
+  fiat_amount        Decimal   @db.Decimal(10, 2)
+  currency           String    @default("USD") @db.VarChar(8)
+  /// PENDING | COMPLETED | FAILED | REFUNDED
+  status             String    @default("PENDING")
+  /// stripe | midtrans | etc.
+  provider           String    @default("stripe")
+  provider_session_id String?
+  provider_payload   Json?
+  refund_reason      String?
+  refunded_at        DateTime? @db.Timestamptz(6)
+  refunded_by        String?   @db.Uuid
+  created_at         DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime? @default(now()) @db.Timestamptz(6)
+  profiles           profiles  @relation(fields: [profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([profile_id], map: "idx_payment_orders_profile")
+  @@index([status], map: "idx_payment_orders_status")
 }
 
 enum booking_status {

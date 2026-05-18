@@ -10,5 +10,5 @@ export class SignUpDto {
 
   @IsOptional()
   @IsIn(['STUDENT', 'TUTOR', 'student', 'tutor'])
-  role?: string;
+  role?: string; // ADMIN accounts must be created directly in DB
 }

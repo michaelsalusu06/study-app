@@ -30,17 +30,41 @@ export class AuthService {
     }
 
     const hashedPassword = await hash(pass);
+    const normalizedRole = role.toUpperCase();
+    const isTutor = normalizedRole === 'TUTOR';
+    const isStudent = normalizedRole === 'STUDENT';
+    const WELCOME_COINS = 10;
 
     const newUser = await this.prisma.profiles.create({
       data: {
         email,
         password: hashedPassword,
-        role: role.toUpperCase(),
+        role: normalizedRole,
         book_price: 0,
+        ...(isTutor && { verification_status: 'PENDING' }),
+        ...(isStudent && { coins_balance: WELCOME_COINS }),
       },
     });
 
-    return this.generateTokens(newUser.id, newUser.email!, newUser.role);
+    if (isStudent) {
+      await this.prisma.coin_transactions.create({
+        data: {
+          profile_id: newUser.id,
+          amount: WELCOME_COINS,
+          kind: 'WELCOME_BONUS',
+          note: 'Welcome bonus on registration',
+        },
+      });
+    }
+
+    return {
+      ...this.generateTokens(newUser.id, newUser.email!, newUser.role),
+      ...(isStudent && { coins_balance: WELCOME_COINS }),
+      ...(isTutor && {
+        verification_status: 'PENDING',
+        notice: 'Your tutor account is pending admin review.',
+      }),
+    };
   }
 
   async login(email: string, pass: string) {
@@ -54,7 +78,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    return this.generateTokens(user.id, user.email!, user.role);
+    return {
+      ...this.generateTokens(user.id, user.email!, user.role),
+      ...(user.verification_status && { verification_status: user.verification_status }),
+    };
   }
 
   async googleLogin(idToken: string, role: string) {
@@ -122,6 +149,7 @@ export class AuthService {
         avatar_url: true,
         bio: true,
         role: true,
+        verification_status: true,
         overall_rating: true,
         rating_count: true,
       },
@@ -132,6 +160,28 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async adminLogin(adminId: string, pass: string) {
+    const user = await this.prisma.profiles.findUnique({ where: { admin_id: adminId } });
+    if (!user || user.role !== 'ADMIN') {
+      throw new UnauthorizedException('Invalid admin ID or password.');
+    }
+
+    const isValid = await verify(user.password!, pass);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid admin ID or password.');
+    }
+
+    return {
+      ...this.generateTokens(user.id, adminId, user.role),
+      admin: {
+        id: user.id,
+        admin_id: user.admin_id,
+        full_name: user.full_name,
+        role: user.role,
+      },
+    };
   }
 
   // ⚠️ TEMP — DEV ONLY. REMOVE BEFORE PRODUCTION / DEMO.

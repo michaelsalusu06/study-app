@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Query,
   Req,
   Request,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateProfileDTO } from './dto/update-profile.dto';
+import { SubmitVerificationDto } from './dto/submit-verification.dto';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('user')
@@ -43,6 +45,17 @@ export class UserController {
   @Get('tutor/:id')
   async getTutorDetail(@Param('id') id: string) {
     return this.userService.getTutorDetailProfile(id);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('tutor/verification')
+  async submitVerification(
+    @Request() req: any,
+    @Body() dto: SubmitVerificationDto,
+  ) {
+    const userId = req.user.userId || req.user.sub;
+    if (!userId) throw new UnauthorizedException('Identification missing in token');
+    return this.userService.submitVerification(userId, dto);
   }
 
   @UseGuards(AuthGuard('jwt'))

@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { AdminLoginDto } from './dto/admin-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -27,6 +28,11 @@ export class AuthController {
   @Post('google')
   googleLogin(@Body() body: GoogleAuthDto) {
     return this.authService.googleLogin(body.idToken, body.role);
+  }
+
+  @Post('admin/login')
+  adminLogin(@Body() body: AdminLoginDto) {
+    return this.authService.adminLogin(body.admin_id, body.password);
   }
 
   @UseGuards(AuthGuard('jwt'))
