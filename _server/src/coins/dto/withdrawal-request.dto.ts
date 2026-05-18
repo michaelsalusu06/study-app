@@ -2,7 +2,7 @@ import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class WithdrawalRequestDto {
   @IsInt()
-  @Min(50)
+  @Min(10)
   coins_amount: number;
 
   @IsString()

@@ -10,24 +10,24 @@ datasource db {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model bookings {
-  id                                     String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  student_id                             String          @db.Uuid
-  tutor_id                               String          @db.Uuid
-  tutor_offer_id                         String?         @db.Uuid
-  start_at                               DateTime        @db.Timestamptz(6)
-  end_at                                 DateTime        @db.Timestamptz(6)
+  id                                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  student_id                             String                @db.Uuid
+  tutor_id                               String                @db.Uuid
+  tutor_offer_id                         String?               @db.Uuid
+  start_at                               DateTime              @db.Timestamptz(6)
+  end_at                                 DateTime              @db.Timestamptz(6)
   duration_minutes                       Int
-  price                                  Decimal         @db.Decimal(10, 2)
-  status                                 booking_status? @default(pending)
-  created_at                             DateTime?       @default(now()) @db.Timestamptz(6)
-  updated_at                             DateTime?       @default(now()) @db.Timestamptz(6)
+  price                                  Decimal               @db.Decimal(10, 2)
+  status                                 booking_status?       @default(pending)
+  created_at                             DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at                             DateTime?             @default(now()) @db.Timestamptz(6)
   /// coins deducted from student at booking creation
-  coins_cost                             Int?            @default(0)
-  profiles_bookings_student_idToprofiles profiles        @relation("bookings_student_idToprofiles", fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  profiles_bookings_tutor_idToprofiles   profiles        @relation("bookings_tutor_idToprofiles", fields: [tutor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tutor_availability_id                  String?         @db.Uuid
-  tutor_offers                           tutor_offers?   @relation(fields: [tutor_offer_id], references: [id], onUpdate: NoAction)
+  coins_cost                             Int?                  @default(0)
+  tutor_availability_id                  String?               @db.Uuid
+  profiles_bookings_student_idToprofiles profiles              @relation("bookings_student_idToprofiles", fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   tutor_availabilities                   tutor_availabilities? @relation(fields: [tutor_availability_id], references: [id], onUpdate: NoAction)
+  profiles_bookings_tutor_idToprofiles   profiles              @relation("bookings_tutor_idToprofiles", fields: [tutor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tutor_offers                           tutor_offers?         @relation(fields: [tutor_offer_id], references: [id], onUpdate: NoAction)
   messages                               messages[]
   reviews                                reviews[]
   transactions                           transactions[]
@@ -93,22 +93,22 @@ model profiles {
   admin_id                               String?                @unique
   /// coin rate for bookings — coins per hour
   book_price_coins                       Int                    @default(10)
-  /// false = temporarily deactivated by admin (reversible)
-  is_active                              Boolean                @default(true)
-  /// true = permanently banned by admin
-  is_banned                              Boolean                @default(false)
   ban_reason                             String?
   banned_at                              DateTime?              @db.Timestamptz(6)
   /// admin_id string of the admin who issued the ban
   banned_by                              String?
   deactivated_at                         DateTime?              @db.Timestamptz(6)
   deactivated_by                         String?
-  /// penalty active until this timestamp; null = no active penalty
-  penalty_until                          DateTime?              @db.Timestamptz(6)
-  /// subtract from overall_rating while penalty active
-  penalty_rating_knock                   Decimal                @default(0) @db.Decimal
+  /// false = temporarily deactivated by admin (reversible)
+  is_active                              Boolean                @default(true)
+  /// true = permanently banned by admin
+  is_banned                              Boolean                @default(false)
   /// forced price reduction % while penalty active (0-100)
   penalty_price_pct                      Int                    @default(0)
+  /// subtract from overall_rating while penalty active
+  penalty_rating_knock                   Decimal                @default(0) @db.Decimal
+  /// penalty active until this timestamp; null = no active penalty
+  penalty_until                          DateTime?              @db.Timestamptz(6)
   bookings_bookings_student_idToprofiles bookings[]             @relation("bookings_student_idToprofiles")
   bookings_bookings_tutor_idToprofiles   bookings[]             @relation("bookings_tutor_idToprofiles")
   coin_transactions                      coin_transactions[]
@@ -193,14 +193,14 @@ model transactions {
 }
 
 model tutor_availabilities {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tutor_id       String    @db.Uuid
-  available_from DateTime  @db.Timestamptz(6)
-  available_to   DateTime  @db.Timestamptz(6)
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tutor_id       String     @db.Uuid
+  available_from DateTime   @db.Timestamptz(6)
+  available_to   DateTime   @db.Timestamptz(6)
   timezone       String?
-  created_at     DateTime? @default(now()) @db.Timestamptz(6)
-  profiles       profiles  @relation(fields: [tutor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
   bookings       bookings[]
+  profiles       profiles   @relation(fields: [tutor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([tutor_id], map: "idx_tutor_availabilities_tutor")
 }
