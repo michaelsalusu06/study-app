@@ -91,6 +91,8 @@ class TextInput extends StatelessWidget {
 
     final effectiveFillColor = fillColor ?? colorScheme.surface;
     final effectiveBorderColor = borderColor ?? colorScheme.outline;
+    // Compute once and reuse across all 5 border instances
+    final br = br;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,38 +167,38 @@ class TextInput extends StatelessWidget {
                 : null,
             border: showBorder
                 ? OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(_effectiveRadius),
+                    borderRadius: br,
                     borderSide: BorderSide(color: effectiveBorderColor),
                   )
                 : OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(_effectiveRadius),
+                    borderRadius: br,
                     borderSide: BorderSide.none,
                   ),
             enabledBorder: showBorder
                 ? OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(_effectiveRadius),
+                    borderRadius: br,
                     borderSide: BorderSide(
                       color: effectiveBorderColor,
                       width: 1.5,
                     ),
                   )
                 : OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(_effectiveRadius),
+                    borderRadius: br,
                     borderSide: BorderSide.none,
                   ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(_effectiveRadius),
+              borderRadius: br,
               borderSide: BorderSide(
                 color: borderColor ?? colorScheme.primary,
                 width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(_effectiveRadius),
+              borderRadius: br,
               borderSide: BorderSide(color: colorScheme.error),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(_effectiveRadius),
+              borderRadius: br,
               borderSide: BorderSide(
                 color: colorScheme.error,
                 width: 2,
@@ -204,13 +206,13 @@ class TextInput extends StatelessWidget {
             ),
             disabledBorder: showBorder
                 ? OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(_effectiveRadius),
+                    borderRadius: br,
                     borderSide: BorderSide(
                       color: colorScheme.onSurface.withOpacity(0.12),
                     ),
                   )
                 : OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(_effectiveRadius),
+                    borderRadius: br,
                     borderSide: BorderSide.none,
                   ),
             hintStyle: textTheme.bodyMedium?.copyWith(

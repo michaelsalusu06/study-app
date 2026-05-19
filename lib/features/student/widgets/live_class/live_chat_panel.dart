@@ -112,8 +112,9 @@ class LiveChatPanel extends StatelessWidget {
   }
 
   Widget _buildMessage(BuildContext context, ChatMessage message) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.sm),

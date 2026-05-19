@@ -44,7 +44,10 @@ class OnboardingPageContent extends StatelessWidget {
   }
 
   Widget _buildHeroContent(BuildContext context) {
-    final theme = Theme.of(context);
+    final titleFade = titleFadeVal.clamp(0.0, 1.0);
+    final titleOffset = Offset((1.0 - titleSlideTVal) * 80 * pageDirection, 0);
+    final subtitleFade = subtitleFadeVal.clamp(0.0, 1.0);
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -56,27 +59,26 @@ class OnboardingPageContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 40),
-        Opacity(
-          opacity: titleFadeVal.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset((1.0 - titleSlideTVal) * 80 * pageDirection, 0),
-            child: Text(
-              'Hi, Welcome to',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
-                fontSize: 18,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0.2,
-              ),
-              textAlign: TextAlign.center,
+        // Color alpha on Text avoids compositing layer
+        Transform.translate(
+          offset: titleOffset,
+          child: Text(
+            'Hi, Welcome to',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.85 * titleFade),
+              fontSize: 18,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.2,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(height: 6),
+        // GradientText uses a shader — must keep Opacity here
         Opacity(
-          opacity: titleFadeVal.clamp(0.0, 1.0),
+          opacity: titleFade,
           child: Transform.translate(
-            offset: Offset((1.0 - titleSlideTVal) * 80 * pageDirection, 0),
+            offset: titleOffset,
             child: const GradientText(
               'Lern',
               gradient: _titleGradient,
@@ -91,23 +93,20 @@ class OnboardingPageContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Opacity(
-          opacity: subtitleFadeVal.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset((1.0 - subtitleSlideTVal) * 60 * pageDirection, 0),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                page.subtitle,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  height: 1.6,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w300,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 3,
+        Transform.translate(
+          offset: Offset((1.0 - subtitleSlideTVal) * 60 * pageDirection, 0),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              page.subtitle,
+              style: TextStyle(
+                color: AppColors.primary.withOpacity(subtitleFade),
+                height: 1.6,
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 3,
             ),
           ),
         ),
@@ -118,6 +117,9 @@ class OnboardingPageContent extends StatelessWidget {
   Widget _buildRegularContent(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final titleFade = titleFadeVal.clamp(0.0, 1.0);
+    final subtitleFade = subtitleFadeVal.clamp(0.0, 1.0);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.xl),
       child: Column(
@@ -131,30 +133,29 @@ class OnboardingPageContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSizes.xxl),
+          // GradientText uses shader — keep Opacity
           Opacity(
-            opacity: titleFadeVal.clamp(0.0, 1.0),
+            opacity: titleFade,
             child: Transform.translate(
               offset: Offset((1.0 - titleSlideTVal) * 80 * pageDirection, 0),
               child: _buildTitleText(page, theme),
             ),
           ),
           const SizedBox(height: AppSizes.md),
-          Opacity(
-            opacity: subtitleFadeVal.clamp(0.0, 1.0),
-            child: Transform.translate(
-              offset: Offset((1.0 - subtitleSlideTVal) * 60 * pageDirection, 0),
-              child: Text(
-                page.subtitle,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  height: 1.6,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w300,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+          // Color alpha on Text avoids compositing layer
+          Transform.translate(
+            offset: Offset((1.0 - subtitleSlideTVal) * 60 * pageDirection, 0),
+            child: Text(
+              page.subtitle,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant.withOpacity(subtitleFade),
+                height: 1.6,
+                fontSize: 16,
+                fontWeight: FontWeight.w300,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

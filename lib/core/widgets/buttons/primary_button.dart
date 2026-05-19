@@ -46,7 +46,6 @@ class _PrimaryButtonState extends State<PrimaryButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-  bool _isPressed = false;
 
   @override
   void initState() {
@@ -127,22 +126,13 @@ class _PrimaryButtonState extends State<PrimaryButton>
 
     return GestureDetector(
       onTapDown: (_) {
-        if (effectiveOnPressed != null) {
-          setState(() => _isPressed = true);
-          _animationController.forward();
-        }
+        if (effectiveOnPressed != null) _animationController.forward();
       },
       onTapUp: (_) {
-        if (effectiveOnPressed != null) {
-          setState(() => _isPressed = false);
-          _animationController.reverse();
-        }
+        if (effectiveOnPressed != null) _animationController.reverse();
       },
       onTapCancel: () {
-        if (effectiveOnPressed != null) {
-          setState(() => _isPressed = false);
-          _animationController.reverse();
-        }
+        if (effectiveOnPressed != null) _animationController.reverse();
       },
       child: ScaleTransition(
         scale: _scaleAnimation,
@@ -182,7 +172,7 @@ class _PrimaryButtonState extends State<PrimaryButton>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(_effectiveRadius),
                     ),
-                    elevation: _isPressed ? 0 : 2,
+                    elevation: 2,
                     shadowColor: colorScheme.shadow,
                   ),
                   child: _buildButtonContent(foregroundColor),

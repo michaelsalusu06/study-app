@@ -126,8 +126,9 @@ class ReviewsTab extends StatelessWidget {
   }
 
   Widget _buildReviewItem(BuildContext context, Map<String, dynamic> review) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.md),

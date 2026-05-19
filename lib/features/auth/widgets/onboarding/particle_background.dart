@@ -43,9 +43,11 @@ class _ParticlePainter extends CustomPainter {
   final List<ParticleData> particles;
   final double t;
 
+  // Single Paint reused every frame — avoids allocation on every 60fps tick
+  static final _paint = Paint();
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint();
     for (final p in particles) {
       final progress = (t * p.speed * 10) % 1.0;
       final x = (p.x * size.width + sin(p.phase + t * 2 * pi) * 20 * p.drift)
@@ -54,8 +56,8 @@ class _ParticlePainter extends CustomPainter {
       final opacity =
           (p.opacity * (0.5 + 0.5 * sin(p.phase + progress * 2 * pi)))
               .clamp(0.0, 1.0);
-      paint.color = Color.fromRGBO(255, 255, 255, opacity);
-      canvas.drawCircle(Offset(x, y), p.radius, paint);
+      _paint.color = Color.fromRGBO(255, 255, 255, opacity);
+      canvas.drawCircle(Offset(x, y), p.radius, _paint);
     }
   }
 

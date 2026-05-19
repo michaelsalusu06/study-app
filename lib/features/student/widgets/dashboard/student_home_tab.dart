@@ -4,8 +4,10 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/services/auth_state.dart';
 import '../../../../core/services/user_api_service.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/cards/tutor_card.dart';
 import '../../../../core/widgets/common/empty_state.dart';
-import '../../../../core/widgets/common/loading_widget.dart';
+import '../../../../core/widgets/common/section_header.dart';
+import '../../../../core/widgets/common/topics_grid.dart';
 import '../../../../core/widgets/inputs/search_input.dart';
 import '../../../../models/tutor_profile.dart';
 
@@ -51,10 +53,10 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
       children: [
         _buildHeader(context),
         const SizedBox(height: AppSizes.sm),
-        _buildSectionLabel('Browse by Topic', onTap: () {}),
-        _buildTopicsGrid(),
+        SectionHeader(title: 'Browse by Topic', onSeeAll: () {}),
+        TopicsGrid(onTopicTap: (_) {}),
         const SizedBox(height: AppSizes.sm),
-        _buildSectionLabel('Top Rated Tutors', onTap: () {}),
+        SectionHeader(title: 'Top Rated Tutors', onSeeAll: () {}),
         _buildTutorSection(),
         const SizedBox(height: 110),
       ],
@@ -213,100 +215,6 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
     );
   }
 
-  Widget _buildSectionLabel(String text, {VoidCallback? onTap}) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSizes.lg, AppSizes.md, AppSizes.lg, AppSizes.sm),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.sectionLabelDark,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (onTap != null)
-            GestureDetector(
-              onTap: onTap,
-              child: const Text(
-                'See all',
-                style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopicsGrid() {
-    const topics = [
-      (Icons.calculate_outlined, 'Math'),
-      (Icons.code_rounded, 'Coding'),
-      (Icons.language_rounded, 'Language'),
-      (Icons.music_note_rounded, 'Music'),
-      (Icons.science_outlined, 'Science'),
-      (Icons.brush_rounded, 'Art'),
-      (Icons.history_edu_rounded, 'History'),
-      (Icons.fitness_center_rounded, 'PE'),
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: topics.length,
-      itemBuilder: (_, i) {
-        final (icon, label) = topics[i];
-        return GestureDetector(
-          onTap: () {},
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        offset: Offset(0, 2)),
-                  ],
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.sectionLabelDark,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildTutorSection() {
     if (_isLoading) {
       return SizedBox(
@@ -315,7 +223,8 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
           itemCount: 4,
-          itemBuilder: (_, __) => _buildTutorSkeleton(),
+          itemExtent: 152, // 140 card + 12 margin — skip per-item measurement
+          itemBuilder: (_, __) => const TutorCardSkeleton(),
         ),
       );
     }
@@ -360,131 +269,10 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
         itemCount: _tutors!.length,
-        itemBuilder: (context, i) => _buildTutorCard(_tutors![i]),
+        itemExtent: 152, // 140 card + 12 margin — skip per-item measurement
+        itemBuilder: (context, i) => TutorCard(tutor: _tutors![i]),
       ),
     );
   }
 
-  Widget _buildTutorCard(TutorProfile tutor) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        width: 140,
-        margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(
-                color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
-              child: const Icon(Icons.person_rounded,
-                  color: AppColors.primary, size: 28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              tutor.displayName,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              tutor.firstSubject.isNotEmpty ? tutor.firstSubject : 'Tutor',
-              style: const TextStyle(
-                  fontSize: 10, color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.star_rounded,
-                    color: AppColors.starGold, size: 14),
-                const SizedBox(width: 2),
-                Text(
-                  (tutor.overallRating ?? 0).toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              tutor.formattedPrice,
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTutorSkeleton() {
-    return Container(
-      width: 140,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ShimmerLoading(
-              child: CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.surfaceContainerHigh)),
-          const SizedBox(height: 8),
-          ShimmerLoading(
-              child: Container(
-                  height: 12,
-                  width: 90,
-                  decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(6)))),
-          const SizedBox(height: 4),
-          ShimmerLoading(
-              child: Container(
-                  height: 10,
-                  width: 60,
-                  decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(5)))),
-          const SizedBox(height: 4),
-          ShimmerLoading(
-              child: Container(
-                  height: 10,
-                  width: 45,
-                  decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(5)))),
-        ],
-      ),
-    );
-  }
 }

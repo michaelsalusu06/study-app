@@ -65,67 +65,60 @@ class OutroOverlay extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Opacity(
-                      opacity: logoOp,
-                      child: const Text(
-                        'Lern',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
+                    // Color alpha instead of Opacity widget — no compositing layer
+                    Text(
+                      'Lern',
+                      style: TextStyle(
+                        color: AppColors.primary.withOpacity(logoOp),
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 32),
-                    Opacity(
-                      opacity: line1Opacity.value.clamp(0.0, 1.0),
-                      child: SlideTransition(
-                        position: line1Slide,
-                        child: const Text(
-                          'Welcome aboard! 🎉',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                          ),
+                    SlideTransition(
+                      position: line1Slide,
+                      child: Text(
+                        'Welcome aboard! 🎉',
+                        style: TextStyle(
+                          color: AppColors.primary.withOpacity(
+                              line1Opacity.value.clamp(0.0, 1.0)),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Opacity(
-                      opacity: line2Opacity.value.clamp(0.0, 1.0),
-                      child: SlideTransition(
-                        position: line2Slide,
-                        child: Text(
-                          'Your learning journey starts now.',
-                          style: TextStyle(
-                            color: AppColors.primary.withOpacity(0.65),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w400,
-                          ),
+                    SlideTransition(
+                      position: line2Slide,
+                      child: Text(
+                        'Your learning journey starts now.',
+                        style: TextStyle(
+                          // Collapsed double-opacity into single multiply
+                          color: AppColors.primary.withOpacity(
+                              line2Opacity.value.clamp(0.0, 1.0) * 0.65),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Opacity(
-                      opacity: line3Opacity.value.clamp(0.0, 1.0),
-                      child: SlideTransition(
-                        position: line3Slide,
-                        child: Text(
-                          "Good luck — you've got this. 💪",
-                          style: TextStyle(
-                            color: AppColors.primary.withOpacity(0.45),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w300,
-                          ),
+                    SlideTransition(
+                      position: line3Slide,
+                      child: Text(
+                        "Good luck — you've got this. 💪",
+                        style: TextStyle(
+                          color: AppColors.primary.withOpacity(
+                              line3Opacity.value.clamp(0.0, 1.0) * 0.45),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w300,
                         ),
                       ),
                     ),
                     const SizedBox(height: 36),
-                    Opacity(
-                      opacity: checkOpacity.value.clamp(0.0, 1.0),
+                    FadeTransition(
+                      opacity: checkOpacity,
                       child: Transform.scale(
                         scale: checkScale.value.clamp(0.0, 1.5),
                         child: Container(
@@ -157,12 +150,14 @@ class _CircleExpandPainter extends CustomPainter {
   const _CircleExpandPainter({required this.radius});
   final double radius;
 
+  static final _paint = Paint()..color = Colors.white;
+
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawCircle(
       Offset(size.width / 2, size.height / 2),
       radius,
-      Paint()..color = Colors.white,
+      _paint,
     );
   }
 
