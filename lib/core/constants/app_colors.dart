@@ -83,6 +83,23 @@ class AppColors {
   static const Color darkBorderLight = Color(0xFF1E222A);
 
   // ===========================================
+  // SEMANTIC UI COLORS
+  // ===========================================
+  static const Color starGold              = Color(0xFFFFB800);
+  static const Color googleBrand           = Color(0xFF4285F4);
+  static const Color logoCyanShadow        = Color(0xFF1AE8FF);
+  static const Color primaryGradientMid    = Color(0xFF147EFF);
+  static const Color primaryGradientEnd    = Color(0xFF149AFF);
+
+  // Dashboard & stats
+  static const Color statsStudents         = Color(0xFF6C63FF);
+  static const Color statsCourses          = Color(0xFFFF6B6B);
+  static const Color statsEarnings         = Color(0xFF4CAF50);
+  static const Color dashboardGradientTop  = Color(0xFF1565C0);
+  static const Color dashboardGradientBottom = Color(0xFFD6E8FF);
+  static const Color sectionLabelDark      = Color(0xFF1A237E);
+
+  // ===========================================
   // GRADIENTS
   // ===========================================
   static const LinearGradient primaryGradient = LinearGradient(
