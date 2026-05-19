@@ -9,6 +9,7 @@ import '../../../core/widgets/common/empty_state.dart';
 import '../../../core/widgets/common/loading_widget.dart';
 import '../../../core/widgets/inputs/search_input.dart';
 import '../../../models/tutor_profile.dart';
+import 'profile_tab.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -40,8 +41,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
             children: const [
               _HomeTab(),
               Center(child: Text(AppStrings.schedule, style: TextStyle(color: Colors.white))),
-              Center(child: Text(AppStrings.myLearning, style: TextStyle(color: Colors.white))),
-              Center(child: Text(AppStrings.profile, style: TextStyle(color: Colors.white))),
+              Center(child: Text(AppStrings.messages, style: TextStyle(color: Colors.white))),
+              ProfileTab(),
             ],
           ),
         ],
@@ -64,7 +65,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         children: [
           _buildNavItem(0, Icons.home_rounded, AppStrings.home),
           _buildNavItem(1, Icons.calendar_today_rounded, AppStrings.schedule),
-          _buildNavItem(2, Icons.play_circle_rounded, AppStrings.myLearning),
+          _buildNavItem(2, Icons.message_outlined, AppStrings.messages),
           _buildNavItem(3, Icons.person_rounded, AppStrings.profile),
         ],
       ),
@@ -262,8 +263,6 @@ class _HomeTabState extends State<_HomeTab> {
         mainAxisSpacing: 10,
       ),
       itemCount: topics.length,
-      // FIX 1: Removed duplicate itemCount/itemBuilder. FIX 2: Destructure
-      // the record correctly — Icon(Icons[i]) is invalid; use the icon field.
       itemBuilder: (_, i) {
         final (icon, label) = topics[i];
         return Column(
@@ -337,12 +336,9 @@ class _HomeTabState extends State<_HomeTab> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
-        // FIX 3: Was referencing undefined `teachers`; use `_tutors`.
         itemCount: _tutors!.length,
         itemBuilder: (context, i) {
-          // FIX 4: Was `teachers[i]`; use `_tutors![i]`.
           final tutor = _tutors![i];
-          final expertise = tutor.subjects.isNotEmpty ? tutor.subjects.first : '';
           return Container(
             width: 130,
             margin: const EdgeInsets.only(right: 12),
@@ -364,7 +360,6 @@ class _HomeTabState extends State<_HomeTab> {
                   child: const Icon(Icons.person_rounded, color: AppColors.primary),
                 ),
                 const SizedBox(height: 8),
-                // FIX 5: Was `teacher.name`; use `tutor.name` (or equivalent field).
                 Text(
                   tutor.displayName,
                   maxLines: 1,
@@ -376,14 +371,14 @@ class _HomeTabState extends State<_HomeTab> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  expertise,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                ),
+                if (tutor.firstSubject.isNotEmpty)
+                  Text(
+                    tutor.firstSubject,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                  ),
                 const SizedBox(height: 4),
-                // FIX 6: Was `tutor.overallRating` used on variable named `teacher`.
                 if (tutor.overallRating != null)
                   Text(
                     '★ ${tutor.overallRating!.toStringAsFixed(1)}',
@@ -394,7 +389,7 @@ class _HomeTabState extends State<_HomeTab> {
           );
         },
       ),
-    ); // FIX 7: Added missing closing paren for SizedBox + semicolon.
+    );
   }
 
   Widget _buildTutorSkeleton() {
