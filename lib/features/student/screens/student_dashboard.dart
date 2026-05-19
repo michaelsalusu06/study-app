@@ -345,7 +345,7 @@ class _HomeTabState extends State<_HomeTab> {
       );
     }
 
-    if (_tutors == null || _tutors!.isEmpty) {
+    if (_tutors == null || _tutors.isEmpty) {
       return const EmptyState(message: 'No tutors available');
     }
 
@@ -378,7 +378,7 @@ class _HomeTabState extends State<_HomeTab> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  tutor.overallRating!.toStringAsFixed(1),
+                  (tutor.overallRating ?? 0).toStringAsFixed(1),
                   style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                 ),
               ],
