@@ -43,9 +43,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
             index: _currentIndex,
             children: const [
               _HomeTab(),
-              ScheduleTab(),                                          // index 1
-              BookingTab(), // index 2 — placeholder
-              ProfileTab(),                                           // index 3
+              ScheduleTab(),// index 1
+              BookingTab(), // index 2 
+              ProfileTab(),// index 3
             ],
           ),
         ],
