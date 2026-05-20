@@ -11,6 +11,8 @@ import '../../../core/widgets/inputs/search_input.dart';
 import '../../../models/tutor_profile.dart';
 import 'profile_tab.dart';
 import 'schedule_tab.dart';
+import '../../../models/bottom_nav.dart';
+import 'booking_tab.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -22,82 +24,35 @@ class StudentDashboard extends StatefulWidget {
 class _StudentDashboardState extends State<StudentDashboard> {
   int _currentIndex = 0;
 
+  static const _gradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF1565C0), Color(0xFFD6E8FF)],
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
       body: Stack(
-        fit: StackFit.expand,
         children: [
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF1565C0), Color(0xFFD6E8FF)],
-              ),
-            ),
+          Positioned.fill(
+            child: DecoratedBox(decoration: const BoxDecoration(gradient: _gradient)),
           ),
           IndexedStack(
             index: _currentIndex,
             children: const [
               _HomeTab(),
-              ScheduleTab(),
-              Center(child: Text(AppStrings.booking, style: TextStyle(color: Colors.white))),
-              ProfileTab(),
+              ScheduleTab(),                                          // index 1
+              BookingTab(), // index 2 — placeholder
+              ProfileTab(),                                           // index 3
             ],
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      height: 64,
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 30),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(100),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10)),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(100),
-        child: Row(
-          children: [
-            _buildNavItem(0, Icons.home_rounded, AppStrings.home),
-            _buildNavItem(1, Icons.calendar_today_rounded, AppStrings.schedule),
-            _buildNavItem(2, Icons.book_online_rounded, AppStrings.booking),
-            _buildNavItem(3, Icons.person_rounded, AppStrings.profile),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _currentIndex = index),
-        child: SizedBox(
-          height: 64,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: isSelected ? AppColors.primary : AppColors.textDisabled),
-              if (!isSelected)
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 10, color: AppColors.textDisabled),
-                ),
-            ],
-          ),
-        ),
+      bottomNavigationBar: StudentBottomNav(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
       ),
     );
   }
@@ -166,6 +121,7 @@ class _HomeTabState extends State<_HomeTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Name row + coin badge ──────────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -186,20 +142,21 @@ class _HomeTabState extends State<_HomeTab> {
                     ],
                   ),
                 ),
+                // Coin badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [
+                    children: const [
                       Icon(Icons.monetization_on_rounded,
                           color: Color(0xFFFFD700), size: 18),
                       SizedBox(width: 6),
                       Text(
-                        '0',
+                        '0',                   // TODO: wire to real coin balance
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -212,6 +169,7 @@ class _HomeTabState extends State<_HomeTab> {
               ],
             ),
             const SizedBox(height: AppSizes.lg),
+            // ── Search + upcoming card ─────────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -227,7 +185,9 @@ class _HomeTabState extends State<_HomeTab> {
                 children: [
                   SearchInput(
                     hint: 'Search tutor...',
-                    onChanged: (value) {},
+                    onChanged: (value) {
+                      // TODO: wire to _loadTutors(search: value) with debounce
+                    },
                   ),
                   const Divider(height: 32),
                   _buildUpcomingDetail(context),
@@ -250,10 +210,9 @@ class _HomeTabState extends State<_HomeTab> {
               const Text(
                 'Upcoming Session',
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary),
               ),
               Text(
                 'No upcoming session',
@@ -272,8 +231,7 @@ class _HomeTabState extends State<_HomeTab> {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Book', style: TextStyle(fontSize: 13)),
           ),
@@ -435,13 +393,15 @@ class _HomeTabState extends State<_HomeTab> {
                     tutor.firstSubject,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.textSecondary),
                   ),
                 const SizedBox(height: 4),
                 if (tutor.overallRating != null)
                   Text(
                     '★ ${tutor.overallRating!.toStringAsFixed(1)}',
-                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.textSecondary),
                   ),
               ],
             ),
@@ -468,9 +428,7 @@ class _HomeTabState extends State<_HomeTab> {
         children: [
           ShimmerLoading(
             child: CircleAvatar(
-              radius: 25,
-              backgroundColor: AppColors.surfaceContainerHigh,
-            ),
+                radius: 25, backgroundColor: AppColors.surfaceContainerHigh),
           ),
           const SizedBox(height: 8),
           ShimmerLoading(

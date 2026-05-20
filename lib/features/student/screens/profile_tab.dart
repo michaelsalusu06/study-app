@@ -24,11 +24,13 @@ class ProfileTab extends StatelessWidget {
             _ProfileMenuItem(
               icon: Icons.lock_outline_rounded,
               label: 'Change Password',
+              disabled: true,
               onTap: () {},
             ),
             _ProfileMenuItem(
               icon: Icons.notifications_none_rounded,
               label: 'Notifications',
+              disabled: true,
               onTap: () {},
             ),
           ],
@@ -39,16 +41,19 @@ class ProfileTab extends StatelessWidget {
             _ProfileMenuItem(
               icon: Icons.help_outline_rounded,
               label: 'Help & Support',
+              disabled: true,
               onTap: () {},
             ),
             _ProfileMenuItem(
               icon: Icons.privacy_tip_outlined,
               label: 'Privacy Policy',
+              disabled: true,
               onTap: () {},
             ),
             _ProfileMenuItem(
               icon: Icons.info_outline_rounded,
               label: 'About',
+              disabled: true,
               onTap: () {},
             ),
           ],
@@ -99,7 +104,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = AuthState.instance;
-    final displayName = auth.displayName; // fullName ?? email.split('@')[0] ?? 'Student'
+    final displayName = auth.displayName;
     final email = auth.email ?? '';
     final avatarUrl = auth.avatarUrl;
 
@@ -111,7 +116,7 @@ class _ProfileHeader extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Avatar — NetworkImage jika avatarUrl tersedia, fallback ke icon
+            // Avatar
             Container(
               width: 96,
               height: 96,
@@ -134,12 +139,10 @@ class _ProfileHeader extends StatelessWidget {
                   : null,
             ),
             const SizedBox(height: 14),
-            // fullName — via displayName getter
             Text(
               displayName,
               style: AppTypography.headline(context).copyWith(color: Colors.white),
             ),
-            // email — ditampilkan jika ada
             if (email.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
@@ -147,22 +150,33 @@ class _ProfileHeader extends StatelessWidget {
                 style: AppTypography.subtitle(context).copyWith(color: Colors.white70),
               ),
             ],
-            const SizedBox(height: 20),
-            // Stats row
+            const SizedBox(height: 16),
+            // Coin badge
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _StatItem(value: '0', label: 'Sessions'),
-                  _VerticalDivider(),
-                  _StatItem(value: '0', label: 'Tutors'),
-                  _VerticalDivider(),
-                  _StatItem(value: '0', label: 'Hours'),
+                  Icon(Icons.monetization_on_rounded,
+                      color: Color(0xFFFFD700), size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    '0', // TODO: wire ke coin balance dari API
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'coins',
+                    style: TextStyle(fontSize: 13, color: Colors.white70),
+                  ),
                 ],
               ),
             ),
@@ -170,46 +184,6 @@ class _ProfileHeader extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// ─── Stat item ────────────────────────────────────────────────────────────────
-
-class _StatItem extends StatelessWidget {
-  final String value;
-  final String label;
-
-  const _StatItem({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.white70),
-        ),
-      ],
-    );
-  }
-}
-
-class _VerticalDivider extends StatelessWidget {
-  const _VerticalDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(width: 1, height: 32, color: Colors.white30);
   }
 }
 
@@ -222,6 +196,7 @@ class _ProfileMenuItem extends StatelessWidget {
   final Color? iconColor;
   final Color? labelColor;
   final bool showDivider;
+  final bool disabled;
 
   const _ProfileMenuItem({
     required this.icon,
@@ -230,18 +205,23 @@ class _ProfileMenuItem extends StatelessWidget {
     this.iconColor,
     this.labelColor,
     this.showDivider = true,
+    this.disabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveIconColor = iconColor ?? AppColors.primary;
-    final effectiveLabelColor = labelColor ?? AppColors.textPrimary;
+    final effectiveIconColor = disabled
+        ? Colors.grey.shade400
+        : (iconColor ?? AppColors.primary);
+    final effectiveLabelColor = disabled
+        ? Colors.grey.shade400
+        : (labelColor ?? AppColors.textPrimary);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         InkWell(
-          onTap: onTap,
+          onTap: disabled ? null : onTap,
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -267,11 +247,28 @@ class _ProfileMenuItem extends StatelessWidget {
                     ),
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.textDisabled,
-                  size: 20,
-                ),
+                if (disabled)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Soon',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textDisabled,
+                    size: 20,
+                  ),
               ],
             ),
           ),
