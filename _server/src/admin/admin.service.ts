@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { EncryptionService } from 'src/common/encryption/encryption.service';
+import { DailyService } from 'src/daily/daily.service';
 import { VerifyTutorDto } from './dto/verify-tutor.dto';
 import { ProcessRefundDto } from './dto/process-refund.dto';
 import { ProcessWithdrawalDto } from './dto/process-withdrawal.dto';
@@ -20,6 +21,7 @@ export class AdminService {
   constructor(
     private prisma: PrismaService,
     private encryption: EncryptionService,
+    private daily: DailyService,
   ) {}
 
   private generateAdminId(): string {
@@ -643,15 +645,17 @@ export class AdminService {
           id: true,
           status: true,
           price: true,
+          coins_cost: true,
           duration_minutes: true,
           start_at: true,
           end_at: true,
           created_at: true,
+          session_notified_at: true,
           profiles_bookings_student_idToprofiles: {
-            select: { id: true, full_name: true, email: true },
+            select: { id: true, full_name: true, email: true, user_status: true },
           },
           profiles_bookings_tutor_idToprofiles: {
-            select: { id: true, full_name: true, email: true },
+            select: { id: true, full_name: true, email: true, user_status: true },
           },
         },
       }),
@@ -659,5 +663,127 @@ export class AdminService {
     ]);
 
     return { data: bookings, total, page, limit };
+  }
+
+  async getBookingJoinInfo(bookingId: string, adminId: string) {
+    const booking = await this.prisma.bookings.findUnique({
+      where: { id: bookingId },
+      select: { id: true, status: true, room_name: true, start_at: true, end_at: true },
+    });
+    if (!booking) throw new NotFoundException('Booking not found.');
+    if (booking.status !== 'confirmed') {
+      throw new BadRequestException('Booking must be confirmed to join.');
+    }
+
+    const base = { start_at: booking.start_at, end_at: booking.end_at };
+
+    // Daily.co with owner token when configured
+    if (booking.room_name && process.env.DAILY_API_KEY && process.env.DAILY_DOMAIN) {
+      const { token, room_url } = await this.daily.createToken(booking.room_name, adminId, booking.end_at, true);
+      return { ...base, provider: 'daily', token, meeting_url: room_url, room_name: booking.room_name, room_password: null };
+    }
+
+    // Jitsi fallback
+    const hash = require('crypto')
+      .createHash('sha256')
+      .update(bookingId + (process.env.JWT_SECRET ?? 'secret'))
+      .digest('hex');
+    return {
+      ...base,
+      provider: 'jitsi',
+      token: null,
+      meeting_url: `https://meet.jit.si/studyapp-${bookingId}`,
+      room_name: `studyapp-${bookingId}`,
+      room_password: hash.slice(0, 8),
+    };
+  }
+
+  async getBookingDetail(bookingId: string) {
+    const booking = await this.prisma.bookings.findUnique({
+      where: { id: bookingId },
+      include: {
+        profiles_bookings_student_idToprofiles: {
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+            username: true,
+            avatar_url: true,
+            role: true,
+            coins_balance: true,
+            user_status: true,
+            is_banned: true,
+            is_active: true,
+            penalty_until: true,
+            penalty_price_pct: true,
+            penalty_rating_knock: true,
+          },
+        },
+        profiles_bookings_tutor_idToprofiles: {
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+            username: true,
+            avatar_url: true,
+            role: true,
+            coins_balance: true,
+            overall_rating: true,
+            user_status: true,
+            is_banned: true,
+            is_active: true,
+            verification_status: true,
+            penalty_until: true,
+            penalty_price_pct: true,
+            penalty_rating_knock: true,
+          },
+        },
+        tutor_offers: {
+          select: { id: true, title: true, summary: true, coins_per_hour: true, duration_minutes: true },
+        },
+        reviews: {
+          select: { id: true, reviewer_id: true, rating: true, comment: true, created_at: true },
+        },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found.');
+
+    const [coinTxns, messageCount] = await Promise.all([
+      this.prisma.coin_transactions.findMany({
+        where: { ref_id: bookingId },
+        select: { id: true, profile_id: true, amount: true, kind: true, note: true, created_at: true },
+        orderBy: { created_at: 'asc' },
+      }),
+      this.prisma.messages.count({ where: { booking_id: bookingId } }),
+    ]);
+
+    return {
+      id: booking.id,
+      status: booking.status,
+      start_at: booking.start_at,
+      end_at: booking.end_at,
+      duration_minutes: booking.duration_minutes,
+      coins_cost: booking.coins_cost,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at,
+      session_notified_at: booking.session_notified_at,
+      offer: booking.tutor_offers,
+      reschedule_proposal:
+        booking.status === 'rescheduling'
+          ? {
+              proposed_start: booking.reschedule_proposed_start,
+              proposed_end: booking.reschedule_proposed_end,
+              notes: booking.reschedule_notes,
+              requested_by: booking.reschedule_requested_by,
+            }
+          : null,
+      student: booking.profiles_bookings_student_idToprofiles,
+      tutor: booking.profiles_bookings_tutor_idToprofiles,
+      reviews: booking.reviews,
+      coin_transactions: coinTxns,
+      messages_count: messageCount,
+      refund_eligible: ['pending', 'confirmed', 'rescheduling'].includes(booking.status as string),
+    };
   }
 }

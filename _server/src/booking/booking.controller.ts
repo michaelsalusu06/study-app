@@ -13,6 +13,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { ProposeRescheduleDto } from './dto/propose-reschedule.dto';
+import { ProposePriceDto } from './dto/propose-price.dto';
 import { ReviewsService } from 'src/reviews/reviews.service';
 import { CreateReviewDto } from 'src/reviews/dto/create-review.dto';
 
@@ -24,7 +26,6 @@ export class BookingController {
     private readonly reviewsService: ReviewsService,
   ) {}
 
-  // POST /booking — student creates a booking
   @Post()
   createBooking(@Request() req: any, @Body() dto: CreateBookingDto) {
     const userId = req.user.userId || req.user.sub;
@@ -32,59 +33,81 @@ export class BookingController {
     return this.bookingService.createBooking(userId, dto);
   }
 
-  // GET /booking/student?status=pending — my bookings as a student
   @Get('student')
   getStudentBookings(@Request() req: any, @Query('status') status?: string) {
-    const userId = req.user.userId || req.user.sub;
-    return this.bookingService.getStudentBookings(userId, status);
+    return this.bookingService.getStudentBookings(req.user.userId || req.user.sub, status);
   }
 
-  // GET /booking/tutor?status=confirmed — my bookings as a tutor
   @Get('tutor')
   getTutorBookings(@Request() req: any, @Query('status') status?: string) {
-    const userId = req.user.userId || req.user.sub;
-    return this.bookingService.getTutorBookings(userId, status);
+    return this.bookingService.getTutorBookings(req.user.userId || req.user.sub, status);
   }
 
-  // GET /booking/:id — student or tutor fetches a single booking detail
   @Get(':id')
   getBookingById(@Param('id') id: string, @Request() req: any) {
-    const userId = req.user.userId || req.user.sub;
-    return this.bookingService.getBookingById(id, userId);
+    return this.bookingService.getBookingById(id, req.user.userId || req.user.sub);
   }
 
-  // PATCH /booking/:id/cancel
+  // GET /booking/:id/join — returns Daily.co token + room URL
+  @Get(':id/join')
+  getJoinInfo(@Param('id') id: string, @Request() req: any) {
+    return this.bookingService.getJoinInfo(id, req.user.userId || req.user.sub);
+  }
+
   @Patch(':id/cancel')
   cancelBooking(@Param('id') id: string, @Request() req: any) {
-    const userId = req.user.userId || req.user.sub;
-    return this.bookingService.cancelBooking(id, userId);
+    return this.bookingService.cancelBooking(id, req.user.userId || req.user.sub);
   }
 
-  // PATCH /booking/:id/confirm — tutor confirms
   @Patch(':id/confirm')
   confirmBooking(@Param('id') id: string, @Request() req: any) {
-    const userId = req.user.userId || req.user.sub;
-    return this.bookingService.confirmBooking(id, userId);
+    return this.bookingService.confirmBooking(id, req.user.userId || req.user.sub);
   }
 
-  // PATCH /booking/:id/complete — tutor marks session done, releases coins to tutor
   @Patch(':id/complete')
   completeBooking(@Param('id') id: string, @Request() req: any) {
-    const userId = req.user.userId || req.user.sub;
-    return this.bookingService.completeBooking(id, userId);
+    return this.bookingService.completeBooking(id, req.user.userId || req.user.sub);
   }
 
-  // PATCH /booking/:id/decline — tutor declines pending booking, refunds student
   @Patch(':id/decline')
   declineBooking(@Param('id') id: string, @Request() req: any) {
-    const userId = req.user.userId || req.user.sub;
-    return this.bookingService.declineBooking(id, userId);
+    return this.bookingService.declineBooking(id, req.user.userId || req.user.sub);
   }
 
-  // POST /booking/:id/review — student submits review for completed booking
+  // Price negotiation
+  @Patch(':id/propose-price')
+  proposePrice(@Param('id') id: string, @Request() req: any, @Body() dto: ProposePriceDto) {
+    return this.bookingService.proposePrice(id, req.user.userId || req.user.sub, dto);
+  }
+
+  @Patch(':id/accept-price')
+  acceptPrice(@Param('id') id: string, @Request() req: any) {
+    return this.bookingService.acceptPrice(id, req.user.userId || req.user.sub);
+  }
+
+  @Patch(':id/reject-price')
+  rejectPrice(@Param('id') id: string, @Request() req: any) {
+    return this.bookingService.rejectPrice(id, req.user.userId || req.user.sub);
+  }
+
+  // Reschedule
+  @Patch(':id/propose-reschedule')
+  proposeReschedule(@Param('id') id: string, @Request() req: any, @Body() dto: ProposeRescheduleDto) {
+    return this.bookingService.proposeReschedule(id, req.user.userId || req.user.sub, dto);
+  }
+
+  @Patch(':id/accept-reschedule')
+  acceptReschedule(@Param('id') id: string, @Request() req: any) {
+    return this.bookingService.acceptReschedule(id, req.user.userId || req.user.sub);
+  }
+
+  @Patch(':id/reject-reschedule')
+  rejectReschedule(@Param('id') id: string, @Request() req: any) {
+    return this.bookingService.rejectReschedule(id, req.user.userId || req.user.sub);
+  }
+
   @Post(':id/review')
   createReview(@Param('id') id: string, @Request() req: any, @Body() dto: CreateReviewDto) {
-    const userId = req.user.userId || req.user.sub;
-    return this.reviewsService.createReview(userId, dto, id);
+    return this.reviewsService.createReview(req.user.userId || req.user.sub, dto, id);
   }
 }

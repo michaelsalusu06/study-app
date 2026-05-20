@@ -147,6 +147,22 @@ export class AdminController {
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
+  @Get('bookings/:id')
+  getBookingDetail(@Param('id') id: string) {
+    return this.adminService.getBookingDetail(id);
+  }
+
+  // GET /admin/bookings/:id/join — admin joins as owner/moderator
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @Get('bookings/:id/join')
+  getBookingJoinInfo(@Param('id') id: string, @Request() req: any) {
+    const adminId = req.user.userId || req.user.sub;
+    return this.adminService.getBookingJoinInfo(id, adminId);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
   @Get('payments')
   getPaymentOrders(
     @Query('page') page?: string,

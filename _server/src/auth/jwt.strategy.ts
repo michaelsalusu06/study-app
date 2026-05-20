@@ -32,6 +32,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new ForbiddenException('Account deactivated. Contact support.');
     }
 
+    // fire-and-forget: update last_seen without blocking the request
+    this.prisma.profiles
+      .update({ where: { id: payload.sub }, data: { last_seen_at: new Date() } })
+      .catch(() => {});
+
     return {
       userId: payload.sub,
       email: payload.email,

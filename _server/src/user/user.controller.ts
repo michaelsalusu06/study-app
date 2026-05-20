@@ -18,6 +18,7 @@ import { SubmitVerificationDto } from './dto/submit-verification.dto';
 import { CreateTutorOfferDto } from './dto/create-tutor-offer.dto';
 import { UpdateTutorOfferDto } from './dto/update-tutor-offer.dto';
 import { CreateAvailabilityDto } from './dto/create-availability.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
 
 @Controller('user')
 export class UserController {
@@ -115,6 +116,13 @@ export class UserController {
     if (!userId)
       throw new UnauthorizedException('Identification missing in token.');
     return this.userService.submitVerification(userId, dto);
+  }
+
+  // PATCH /user/status — update own presence status (ONLINE | OFFLINE | BUSY)
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('status')
+  updateStatus(@Request() req: any, @Body() dto: UpdateStatusDto) {
+    return this.userService.updateStatus(req.user.userId || req.user.sub, dto.status);
   }
 
   @UseGuards(AuthGuard('jwt'))

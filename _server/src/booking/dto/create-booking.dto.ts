@@ -1,4 +1,4 @@
-import { IsISO8601, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsISO8601, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class CreateBookingDto {
   // Required only when NOT booking via an offer
@@ -29,4 +29,9 @@ export class CreateBookingDto {
   @IsOptional()
   @IsUUID()
   availabilityId?: string;
+
+  // Optional — student explains why they need the session (shown to tutor before confirm)
+  @IsOptional()
+  @IsString()
+  description?: string;
 }
