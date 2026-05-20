@@ -200,6 +200,7 @@ class AppStrings {
   static const String refresh = 'Refresh';
   static const String loadMore = 'Load More';
   static const String tryAgain = 'Try Again';
+  static const String booking = 'Booking';
 
   // Messages
   static const String noResultsFound = 'No results found';
@@ -227,4 +228,5 @@ class AppStrings {
   static const String courseUpdated = 'Course updated successfully';
   static const String enrolledSuccess = 'Successfully enrolled in course!';
   static const String subscribedSuccess = 'Successfully subscribed!';
+  
 }
