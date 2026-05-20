@@ -147,6 +147,13 @@ export class AdminController {
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
+  @Get('bookings/:id')
+  getBookingDetail(@Param('id') id: string) {
+    return this.adminService.getBookingDetail(id);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
   @Get('payments')
   getPaymentOrders(
     @Query('page') page?: string,

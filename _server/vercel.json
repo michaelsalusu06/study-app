@@ -11,5 +11,11 @@
       "src": "/(.*)",
       "dest": "dist/src/main.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/internal/notify-upcoming-sessions",
+      "schedule": "*/10 * * * *"
+    }
   ]
 }

@@ -643,15 +643,17 @@ export class AdminService {
           id: true,
           status: true,
           price: true,
+          coins_cost: true,
           duration_minutes: true,
           start_at: true,
           end_at: true,
           created_at: true,
+          session_notified_at: true,
           profiles_bookings_student_idToprofiles: {
-            select: { id: true, full_name: true, email: true },
+            select: { id: true, full_name: true, email: true, user_status: true },
           },
           profiles_bookings_tutor_idToprofiles: {
-            select: { id: true, full_name: true, email: true },
+            select: { id: true, full_name: true, email: true, user_status: true },
           },
         },
       }),
@@ -659,5 +661,94 @@ export class AdminService {
     ]);
 
     return { data: bookings, total, page, limit };
+  }
+
+  async getBookingDetail(bookingId: string) {
+    const booking = await this.prisma.bookings.findUnique({
+      where: { id: bookingId },
+      include: {
+        profiles_bookings_student_idToprofiles: {
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+            username: true,
+            avatar_url: true,
+            role: true,
+            coins_balance: true,
+            user_status: true,
+            is_banned: true,
+            is_active: true,
+            penalty_until: true,
+            penalty_price_pct: true,
+            penalty_rating_knock: true,
+          },
+        },
+        profiles_bookings_tutor_idToprofiles: {
+          select: {
+            id: true,
+            full_name: true,
+            email: true,
+            username: true,
+            avatar_url: true,
+            role: true,
+            coins_balance: true,
+            overall_rating: true,
+            user_status: true,
+            is_banned: true,
+            is_active: true,
+            verification_status: true,
+            penalty_until: true,
+            penalty_price_pct: true,
+            penalty_rating_knock: true,
+          },
+        },
+        tutor_offers: {
+          select: { id: true, title: true, summary: true, coins_per_hour: true, duration_minutes: true },
+        },
+        reviews: {
+          select: { id: true, reviewer_id: true, rating: true, comment: true, created_at: true },
+        },
+      },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found.');
+
+    const [coinTxns, messageCount] = await Promise.all([
+      this.prisma.coin_transactions.findMany({
+        where: { ref_id: bookingId },
+        select: { id: true, profile_id: true, amount: true, kind: true, note: true, created_at: true },
+        orderBy: { created_at: 'asc' },
+      }),
+      this.prisma.messages.count({ where: { booking_id: bookingId } }),
+    ]);
+
+    return {
+      id: booking.id,
+      status: booking.status,
+      start_at: booking.start_at,
+      end_at: booking.end_at,
+      duration_minutes: booking.duration_minutes,
+      coins_cost: booking.coins_cost,
+      created_at: booking.created_at,
+      updated_at: booking.updated_at,
+      session_notified_at: booking.session_notified_at,
+      offer: booking.tutor_offers,
+      reschedule_proposal:
+        booking.status === 'rescheduling'
+          ? {
+              proposed_start: booking.reschedule_proposed_start,
+              proposed_end: booking.reschedule_proposed_end,
+              notes: booking.reschedule_notes,
+              requested_by: booking.reschedule_requested_by,
+            }
+          : null,
+      student: booking.profiles_bookings_student_idToprofiles,
+      tutor: booking.profiles_bookings_tutor_idToprofiles,
+      reviews: booking.reviews,
+      coin_transactions: coinTxns,
+      messages_count: messageCount,
+      refund_eligible: ['pending', 'confirmed', 'rescheduling'].includes(booking.status as string),
+    };
   }
 }

@@ -11,6 +11,8 @@ import { CoinsModule } from './coins/coins.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OffersModule } from './offers/offers.module';
+import { MessagesModule } from './messages/messages.module';
+import { InternalModule } from './internal/internal.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { OffersModule } from './offers/offers.module';
     ReviewsModule,
     NotificationsModule,
     OffersModule,
+    MessagesModule,
+    InternalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

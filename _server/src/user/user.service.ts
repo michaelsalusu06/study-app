@@ -63,6 +63,8 @@ export class UserService {
         overall_rating: true,
         rating_count: true,
         tutor_rating: true,
+        user_status: true,
+        last_seen_at: true,
         penalty_until: true,
         penalty_rating_knock: true,
         penalty_price_pct: true,
@@ -115,6 +117,8 @@ export class UserService {
         subjects: true,
         overall_rating: true,
         rating_count: true,
+        user_status: true,
+        last_seen_at: true,
         penalty_until: true,
         penalty_rating_knock: true,
         penalty_price_pct: true,
@@ -139,6 +143,8 @@ export class UserService {
         overall_rating: true,
         rating_count: true,
         tutor_rating: true,
+        user_status: true,
+        last_seen_at: true,
         penalty_until: true,
         penalty_rating_knock: true,
         penalty_price_pct: true,
@@ -421,6 +427,14 @@ export class UserService {
     });
 
     return { message: 'Verification info submitted. Pending admin review.' };
+  }
+
+  async updateStatus(userId: string, status: 'ONLINE' | 'OFFLINE' | 'BUSY') {
+    return this.prisma.profiles.update({
+      where: { id: userId },
+      data: { user_status: status, last_seen_at: new Date() },
+      select: { id: true, user_status: true, last_seen_at: true },
+    });
   }
 
   async updateProfile(userId: string, data: UpdateProfileDTO) {
