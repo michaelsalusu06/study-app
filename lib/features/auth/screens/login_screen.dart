@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/buttons/primary_button.dart';
-import '../../../core/widgets/inputs/text_input.dart';
+import '../../../core/widgets/cards/social_auth_row.dart';
+import '../../../core/widgets/common/auth_form_label.dart';
+import '../../../core/widgets/common/terms_checkbox.dart';
 import '../../../core/widgets/inputs/password_text_field.dart';
+import '../../../core/widgets/inputs/text_input.dart';
 
-/// Login screen - Access Account design
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   bool _agreedToTerms = false;
   bool _isLoading = false;
@@ -37,7 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please agree to the Terms of Service and Privacy Policy'),
+          content: Text(
+              'Please agree to the Terms of Service and Privacy Policy'),
         ),
       );
       return;
@@ -66,11 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleGoogleSignIn() async {
     try {
-      // final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      // if (googleUser != null) {
-      //   // Navigate to the next screen or handle the signed-in user
-      //   Navigator.of(context).pushReplacementNamed('/student-dashboard');
-      // }
+      // stub — wire up Google SSO when ready
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to sign in with Google: $error')),
@@ -87,10 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.info,
       body: Column(
         children: [
-          // ── Blue header area ──────────────────────────────────
           SizedBox(height: MediaQuery.of(context).padding.top + AppSizes.md),
-
-          // ── White card body ───────────────────────────────────
           Expanded(
             child: Container(
               decoration: const BoxDecoration(
@@ -109,7 +105,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Title ─────────────────────────────────
                       Center(
                         child: Column(
                           children: [
@@ -135,8 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Divider(color: AppColors.divider),
                       const SizedBox(height: AppSizes.lg),
 
-                      // ── Email Input ───────────────────────────
-                      _buildLabel(AppStrings.email),
+                      const AuthFormLabel(AppStrings.email),
                       const SizedBox(height: AppSizes.xs),
                       TextInput(
                         controller: _emailController,
@@ -146,21 +140,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         textInputAction: TextInputAction.next,
                         borderColor: AppColors.info,
                         borderRadius: AppSizes.radiusFull,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppStrings.fieldRequired;
-                          }
-                          if (!value.contains('@')) {
-                            return AppStrings.invalidEmail;
-                          }
-                          return null;
-                        },
+                        validator: Validators.email,
                       ),
 
                       const SizedBox(height: AppSizes.md),
 
-                      // ── Password Input ────────────────────────
-                      _buildLabel(AppStrings.password),
+                      const AuthFormLabel(AppStrings.password),
                       const SizedBox(height: AppSizes.xs),
                       PasswordTextField(
                         controller: _passwordController,
@@ -168,18 +153,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         textInputAction: TextInputAction.done,
                         borderColor: AppColors.info,
                         borderRadius: AppSizes.radiusFull,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppStrings.fieldRequired;
-                          }
-                          if (value.length < 6) {
-                            return AppStrings.passwordTooShort;
-                          }
-                          return null;
-                        },
+                        validator: Validators.password,
                       ),
 
-                      // ── Forgot Password ───────────────────────
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -202,16 +178,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: AppSizes.md),
 
-                      // ── Or sign in with ───────────────────────
                       Row(
                         children: [
                           const Expanded(
-                            child: Divider(color: AppColors.divider),
-                          ),
+                              child: Divider(color: AppColors.divider)),
                           Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: AppSizes.md,
-                            ),
+                                horizontal: AppSizes.md),
                             child: Text(
                               AppStrings.orSignInWith,
                               style: textTheme.bodySmall?.copyWith(
@@ -220,86 +193,29 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const Expanded(
-                            child: Divider(color: AppColors.divider),
-                          ),
+                              child: Divider(color: AppColors.divider)),
                         ],
                       ),
 
                       const SizedBox(height: AppSizes.lg),
 
-                      // ── Social Buttons ────────────────────────
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _SocialIconButton(
-                            onPressed: _handleGoogleSignIn,
-                            child: const _GoogleLogo(),
-                          ),
-                          const SizedBox(width: AppSizes.md),
-                          _SocialIconButton(
-                            onPressed: () {},
-                            child: const _AppleLogo(),
-                          ),
-                        ],
+                      SocialAuthRow(
+                        onGoogleTap: _handleGoogleSignIn,
+                        onAppleTap: () {},
                       ),
 
                       const SizedBox(height: AppSizes.lg),
                       const Divider(color: AppColors.divider),
                       const SizedBox(height: AppSizes.md),
 
-                      // ── Terms Checkbox ────────────────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: _agreedToTerms,
-                              onChanged: (v) =>
-                                  setState(() => _agreedToTerms = v ?? false),
-                              activeColor: AppColors.info,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSizes.sm),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                                children: [
-                                  const TextSpan(text: 'I agree to the '),
-                                  TextSpan(
-                                    text: AppStrings.termsOfService,
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: AppColors.info,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const TextSpan(text: ' and '),
-                                  TextSpan(
-                                    text: AppStrings.privacyPolicy,
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: AppColors.info,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                      TermsCheckbox(
+                        value: _agreedToTerms,
+                        onChanged: (v) =>
+                            setState(() => _agreedToTerms = v ?? false),
                       ),
 
                       const SizedBox(height: AppSizes.xl),
 
-                      // ── Login Button ──────────────────────────
                       PrimaryButton(
                         text: AppStrings.login,
                         onPressed: _agreedToTerms ? _login : null,
@@ -310,7 +226,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: AppSizes.lg),
 
-                      // ── Sign Up Link ──────────────────────────
                       Center(
                         child: RichText(
                           text: TextSpan(
@@ -321,9 +236,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               TextSpan(text: '${AppStrings.noAccount} '),
                               WidgetSpan(
                                 child: GestureDetector(
-                                  onTap: () => Navigator.of(
-                                    context,
-                                  ).pushReplacementNamed('/register'),
+                                  onTap: () => Navigator.of(context)
+                                      .pushReplacementNamed('/register'),
                                   child: Text(
                                     AppStrings.signUp,
                                     style: textTheme.bodySmall?.copyWith(
@@ -346,70 +260,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.info,
-      ),
-    );
-  }
-}
-
-// ── Google Logo ───────────────────────────────────────────────────────────────
-
-class _GoogleLogo extends StatelessWidget {
-  const _GoogleLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return const FaIcon(
-      FontAwesomeIcons.google,
-      size: 26,
-      color: Color(0xFF4285F4),
-    );
-  }
-}
-
-// ── Apple Logo ────────────────────────────────────────────────────────────────
-
-class _AppleLogo extends StatelessWidget {
-  const _AppleLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return const FaIcon(FontAwesomeIcons.apple, size: 28, color: Colors.black);
-  }
-}
-
-// ── Social Icon Button ────────────────────────────────────────────────────────
-
-class _SocialIconButton extends StatelessWidget {
-  const _SocialIconButton({required this.onPressed, required this.child});
-
-  final VoidCallback onPressed;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-      child: Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-          border: Border.all(color: AppColors.info, width: 1.5),
-        ),
-        child: Center(child: child),
       ),
     );
   }

@@ -57,12 +57,12 @@ class AvatarWidget extends StatelessWidget {
   }
 
   String get _initials {
-    if (name == null || name!.isEmpty) return '?';
-    final parts = name!.trim().split(' ');
+    if (name == null || name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return name![0].toUpperCase();
+    return name[0].toUpperCase();
   }
 
   @override
@@ -88,7 +88,7 @@ class AvatarWidget extends StatelessWidget {
                 width: 2,
               )
             : null,
-        image: imageUrl != null && imageUrl!.isNotEmpty
+        image: imageUrl != null && imageUrl.isNotEmpty
             ? DecorationImage(
                 image: NetworkImage(imageUrl!),
                 fit: BoxFit.cover,
@@ -103,7 +103,7 @@ class AvatarWidget extends StatelessWidget {
           ),
         ],
       ),
-      child: imageUrl == null || imageUrl!.isEmpty
+      child: imageUrl == null || imageUrl.isEmpty
           ? Center(
               child: Text(
                 _initials,

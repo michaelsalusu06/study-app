@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/utils/validators.dart';
 import '../../../core/widgets/buttons/primary_button.dart';
-import '../../../core/widgets/inputs/text_input.dart';
+import '../../../core/widgets/cards/social_auth_row.dart';
+import '../../../core/widgets/common/auth_form_label.dart';
+import '../../../core/widgets/common/terms_checkbox.dart';
 import '../../../core/widgets/inputs/password_text_field.dart';
+import '../../../core/widgets/inputs/text_input.dart';
 
-/// Register screen - same design as login page
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -37,7 +39,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please agree to the Terms of Service and Privacy Policy'),
+          content: Text(
+              'Please agree to the Terms of Service and Privacy Policy'),
         ),
       );
       return;
@@ -70,40 +73,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // Future<void> _handleGoogleSignIn() async {
-  //   if (!_acceptTerms) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(
-  //         content:
-  //             Text('Please agree to the Terms of Service and Privacy Policy'),
-  //       ),
-  //     );
-  //     return;
-  //   }
-
-  //   try {
-  //     final GoogleSignIn googleSignInMethod = GoogleSignIn();
-  //     final GoogleSignInAccount? googleUser =
-  //         await googleSignInMethod.signOut();
-
-  //     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-  //     final String? idToken = googleAuth.idToken;
-
-  //     if (googleUser != null) {
-  //       print(googleUser.email);
-  //       Navigator.of(context).pushReplacementNamed('/student-dashboard');
-  //     }
-  //   } catch (error) {
-  //     print("Google Sign-In Error: $error");
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text('Failed to sign in with Google. Please try again.'),
-  //         backgroundColor: Colors.redAccent,
-  //       ),
-  //     );
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -113,14 +82,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: AppColors.info,
       body: Column(
         children: [
-          // ── White card body ───────────────────────────────────
           Expanded(
             child: Container(
               decoration: const BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(
@@ -134,7 +100,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Title ─────────────────────────────────
                       Center(
                         child: Column(
                           children: [
@@ -157,8 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: AppSizes.md),
 
-                      // ── Email ─────────────────────────────────
-                      _buildLabel(AppStrings.email),
+                      const AuthFormLabel(AppStrings.email),
                       const SizedBox(height: AppSizes.xs),
                       TextInput(
                         controller: _emailController,
@@ -168,21 +132,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         textInputAction: TextInputAction.next,
                         borderColor: AppColors.info,
                         borderRadius: AppSizes.radiusFull,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppStrings.fieldRequired;
-                          }
-                          if (!value.contains('@')) {
-                            return AppStrings.invalidEmail;
-                          }
-                          return null;
-                        },
+                        validator: Validators.email,
                       ),
 
                       const SizedBox(height: AppSizes.md),
 
-                      // ── Password ──────────────────────────────
-                      _buildLabel(AppStrings.password),
+                      const AuthFormLabel(AppStrings.password),
                       const SizedBox(height: AppSizes.xs),
                       PasswordTextField(
                         controller: _passwordController,
@@ -190,21 +145,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         textInputAction: TextInputAction.next,
                         borderColor: AppColors.info,
                         borderRadius: AppSizes.radiusFull,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppStrings.fieldRequired;
-                          }
-                          if (value.length < 6) {
-                            return AppStrings.passwordTooShort;
-                          }
-                          return null;
-                        },
+                        validator: Validators.password,
                       ),
 
                       const SizedBox(height: AppSizes.md),
 
-                      // ── Confirm Password ──────────────────────
-                      _buildLabel(AppStrings.confirmPassword),
+                      const AuthFormLabel(AppStrings.confirmPassword),
                       const SizedBox(height: AppSizes.xs),
                       PasswordTextField(
                         controller: _confirmPasswordController,
@@ -212,20 +158,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         textInputAction: TextInputAction.done,
                         borderColor: AppColors.info,
                         borderRadius: AppSizes.radiusFull,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return AppStrings.fieldRequired;
-                          }
-                          if (value != _passwordController.text) {
-                            return AppStrings.passwordNotMatch;
-                          }
-                          return null;
-                        },
+                        validator: (value) => Validators.confirmPassword(
+                            value, _passwordController.text),
                       ),
 
                       const SizedBox(height: AppSizes.xl),
 
-                      // ── Or sign up with ───────────────────────
                       Row(
                         children: [
                           const Expanded(
@@ -247,81 +185,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: AppSizes.lg),
 
-                      // ── Social Buttons ────────────────────────
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _SocialIconButton(
-                            onPressed: () {},
-                            child: const _GoogleLogo(),
-                          ),
-                          const SizedBox(width: AppSizes.md),
-                          _SocialIconButton(
-                            onPressed: () {
-                              // Apple SSO
-                            },
-                            child: const _AppleLogo(),
-                          ),
-                        ],
+                      SocialAuthRow(
+                        onGoogleTap: () {},
+                        onAppleTap: () {},
                       ),
 
                       const SizedBox(height: AppSizes.lg),
                       const Divider(color: AppColors.divider),
                       const SizedBox(height: AppSizes.md),
 
-                      // ── Terms Checkbox ────────────────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: _acceptTerms,
-                              onChanged: (v) =>
-                                  setState(() => _acceptTerms = v ?? false),
-                              activeColor: AppColors.info,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSizes.sm),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                                children: [
-                                  const TextSpan(text: 'I agree to the '),
-                                  TextSpan(
-                                    text: AppStrings.termsOfService,
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: AppColors.info,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const TextSpan(text: ' and '),
-                                  TextSpan(
-                                    text: AppStrings.privacyPolicy,
-                                    style: textTheme.bodySmall?.copyWith(
-                                      color: AppColors.info,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                      TermsCheckbox(
+                        value: _acceptTerms,
+                        onChanged: (v) =>
+                            setState(() => _acceptTerms = v ?? false),
                       ),
 
                       const SizedBox(height: AppSizes.xl),
 
-                      // ── Register Button ───────────────────────
                       PrimaryButton(
                         text: AppStrings.register,
                         onPressed: _acceptTerms ? _register : null,
@@ -332,7 +212,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: AppSizes.lg),
 
-                      // ── Login Link ────────────────────────────
                       Center(
                         child: RichText(
                           text: TextSpan(
@@ -367,77 +246,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.info,
-      ),
-    );
-  }
-}
-
-// ── Google Logo ───────────────────────────────────────────────────────────────
-
-class _GoogleLogo extends StatelessWidget {
-  const _GoogleLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return const FaIcon(
-      FontAwesomeIcons.google,
-      size: 26,
-      color: Color(0xFF4285F4),
-    );
-  }
-}
-
-// ── Apple Logo ────────────────────────────────────────────────────────────────
-
-class _AppleLogo extends StatelessWidget {
-  const _AppleLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return const FaIcon(
-      FontAwesomeIcons.apple,
-      size: 28,
-      color: Colors.black,
-    );
-  }
-}
-
-// - Social Icon Button ────────────────────────────────────────────────────────
-
-class _SocialIconButton extends StatelessWidget {
-  const _SocialIconButton({
-    required this.onPressed,
-    required this.child,
-  });
-
-  final VoidCallback onPressed;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-      child: Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-          border: Border.all(color: AppColors.info, width: 1.5),
-        ),
-        child: Center(child: child),
       ),
     );
   }

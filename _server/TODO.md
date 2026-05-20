@@ -14,7 +14,7 @@
 - [x] Admin — stats, user list, tutor verify, payment orders, refunds, withdrawal management
 - [x] Coin system — balance, purchase order, history, QRIS stub, withdrawal request
 - [x] DB schema — coins_cost, book_price_coins, coins_per_hour, withdrawal_requests
-- [x] DB migrated to Supabase + schema pushed (is_active, is_banned, penalty_*, tutor_availability_id, declined status)
+- [x] DB migrated to Supabase + schema pushed (is*active, is_banned, penalty*\*, tutor_availability_id, declined status)
 - [x] TutorOffer CRUD — create, list mine, update, soft-delete (with coins_per_hour)
 - [x] UpdateProfile — book_price_coins + subjects fields added
 - [x] Reviews — POST /reviews AND POST /booking/:id/review (both work), GET /reviews/tutor/:id

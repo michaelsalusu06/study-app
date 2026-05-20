@@ -21,10 +21,10 @@ class SocialAuthButton extends StatelessWidget {
     this.borderColor,
     this.textColor,
     this.isLoading = false,
-    required Null Function() onApplePressed,
-    required Null Function() onGooglePressed,
-    required String googleButtonText,
-    required String appleButtonText,
+    VoidCallback? onApplePressed,
+    VoidCallback? onGooglePressed,
+    String? googleButtonText,
+    String? appleButtonText,
   });
 
   final String label;

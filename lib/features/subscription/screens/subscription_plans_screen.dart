@@ -436,7 +436,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 
                 // Limitations
                 if (plan.limitations != null)
-                  ...plan.limitations!.map((limitation) {
+                  ...plan.limitations.map((limitation) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSizes.xs),
                       child: Row(
