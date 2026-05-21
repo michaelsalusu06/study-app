@@ -53,20 +53,37 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
+    final tutorProfile =
+        json['profiles_bookings_tutor_idToprofiles'] as Map<String, dynamic>?;
+    final tutorOffer = json['tutor_offers'] as Map<String, dynamic>?;
+
+    // Backend uses start_at/end_at; legacy shape used start_time/end_time.
+    final startAt = DateTime.parse(
+      (json['start_at'] ?? json['start_time'] ?? DateTime.now().toIso8601String()).toString(),
+    ).toLocal();
+    final endAt = DateTime.parse(
+      (json['end_at'] ?? json['end_time'] ?? startAt.add(const Duration(hours: 1)).toIso8601String()).toString(),
+    ).toLocal();
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final dayOfWeek = json['day_of_week']?.toString() ?? days[startAt.weekday - 1];
+    final defaultStartTime = json['default_start_time']?.toString() ??
+        '${startAt.hour.toString().padLeft(2, '0')}:${startAt.minute.toString().padLeft(2, '0')}';
+
     return Booking(
       id:               json['id']?.toString() ?? '',
-      tutorName:        json['tutor_name']?.toString() ?? 'Tutor',
-      tutorAvatarUrl:   json['tutor_avatar_url']?.toString(),
-      title:            json['title']?.toString() ?? '',
+      tutorName:        tutorProfile?['full_name']?.toString() ?? json['tutor_name']?.toString() ?? 'Tutor',
+      tutorAvatarUrl:   tutorProfile?['avatar_url']?.toString() ?? json['tutor_avatar_url']?.toString(),
+      title:            tutorOffer?['title']?.toString() ?? json['title']?.toString() ?? 'Tutoring Session',
       description:      json['description']?.toString(),
-      subject:          json['subject']?.toString() ?? '',
-      date:             DateTime.parse(json['date'].toString()),
-      startTime:        DateTime.parse(json['start_time'].toString()),
-      endTime:          DateTime.parse(json['end_time'].toString()),
-      dayOfWeek:        json['day_of_week']?.toString() ?? '',
-      defaultStartTime: json['default_start_time']?.toString() ?? '',
+      subject:          tutorOffer?['title']?.toString() ?? json['subject']?.toString() ?? 'General',
+      date:             startAt,
+      startTime:        startAt,
+      endTime:          endAt,
+      dayOfWeek:        dayOfWeek,
+      defaultStartTime: defaultStartTime,
       price:            double.tryParse(json['price']?.toString() ?? '0') ?? 0,
-      coinAmount:       int.tryParse(json['coin_amount']?.toString() ?? '0') ?? 0,
+      coinAmount:       int.tryParse((json['coins_cost'] ?? json['coin_amount'])?.toString() ?? '0') ?? 0,
       status:           _parseStatus(json['status']?.toString()),
     );
   }

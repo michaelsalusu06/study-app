@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/common/empty_state.dart';
 import '../../../core/widgets/common/loading_widget.dart';
+import '../../../core/services/user_api_service.dart';
 import '../../../models/booking_model.dart';
 
-// TODO: ganti dengan UserApiService.instance.getStudentBookings()
-Future<List<Booking>> _fetchStudentBookings() async {
-  await Future.delayed(const Duration(milliseconds: 800));
-  return [];
-}
+Future<List<Booking>> _fetchStudentBookings() =>
+    UserApiService.instance.getStudentBookings().then(
+      (r) => r.bookings ?? [],
+    );
 
 class BookingTab extends StatefulWidget {
   const BookingTab({super.key});
@@ -170,11 +171,35 @@ class _BookingTabState extends State<BookingTab>
             padding: const EdgeInsets.fromLTRB(
                 AppSizes.lg, AppSizes.md, AppSizes.lg, 110),
             itemCount: items.length,
-            itemBuilder: (_, i) => _CourseCard(booking: items[i]),
+            itemBuilder: (_, i) => _CourseCard(
+              booking: items[i],
+              onJoin: items[i].status == BookingStatus.confirmed
+                  ? () => _joinCall(items[i].id)
+                  : null,
+            ),
           ),
         );
       }).toList(),
     );
+  }
+
+  Future<void> _joinCall(String bookingId) async {
+    final result = await UserApiService.instance.getJoinInfo(bookingId);
+    if (!mounted) return;
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.errorMessage ?? 'Cannot join call.')),
+      );
+      return;
+    }
+    final uri = Uri.parse(result.meetingUrl!);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Jitsi Meet.')),
+        );
+      }
+    }
   }
 }
 
@@ -182,8 +207,9 @@ class _BookingTabState extends State<BookingTab>
 
 class _CourseCard extends StatelessWidget {
   final Booking booking;
+  final VoidCallback? onJoin;
 
-  const _CourseCard({required this.booking});
+  const _CourseCard({required this.booking, this.onJoin});
 
   @override
   Widget build(BuildContext context) {
@@ -287,6 +313,23 @@ class _CourseCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (onJoin != null) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: onJoin,
+                      icon: const Icon(Icons.videocam_rounded, size: 18),
+                      label: const Text('Join Call'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

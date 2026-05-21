@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../constants/app_config.dart';
 import '../../data/dummy_data.dart';
+import '../../models/booking_model.dart';
 import '../../models/tutor_profile.dart';
 import 'auth_state.dart';
 
@@ -101,6 +102,75 @@ class UserApiService {
   }
 }
 
+  // ─── Get Student Bookings ─────────────────────────────────────────────────
+
+  Future<BookingListResult> getStudentBookings({
+    String? status,
+    String? from,
+    String? to,
+  }) async {
+    if (!AuthState.instance.isLoggedIn) {
+      return BookingListResult.error('Not authenticated.');
+    }
+
+    final queryParams = <String, String>{};
+    if (status != null) queryParams['status'] = status;
+    if (from != null) queryParams['from'] = from;
+    if (to != null) queryParams['to'] = to;
+
+    final uri = Uri.parse('${AppConfig.apiUrl}/booking/student')
+        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+    try {
+      final response = await http
+          .get(uri, headers: AuthState.instance.authHeaders)
+          .timeout(AppConfig.requestTimeout);
+
+      if (response.statusCode == 200) {
+        final list = jsonDecode(response.body) as List;
+        return BookingListResult.success(
+          list.map((e) => Booking.fromJson(e as Map<String, dynamic>)).toList(),
+        );
+      }
+
+      return BookingListResult.error('Failed to load bookings (${response.statusCode})');
+    } catch (e) {
+      return BookingListResult.error('Network error. Please try again.');
+    }
+  }
+
+  // ─── Get Join Info (Jitsi) ────────────────────────────────────────────────
+
+  Future<JoinInfoResult> getJoinInfo(String bookingId) async {
+    if (!AuthState.instance.isLoggedIn) {
+      return JoinInfoResult.error('Not authenticated.');
+    }
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/join'),
+            headers: AuthState.instance.authHeaders,
+          )
+          .timeout(AppConfig.requestTimeout);
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return JoinInfoResult.success(
+          meetingUrl: data['meeting_url'].toString(),
+          roomPassword: data['room_password']?.toString(),
+        );
+      }
+
+      final msg = data['message']?.toString() ?? 'Cannot join (${response.statusCode})';
+      return JoinInfoResult.error(msg);
+    } catch (e) {
+      return JoinInfoResult.error('Network error. Please try again.');
+    }
+  }
+}
+
 // ─── Result Models ────────────────────────────────────────────────────────────
 
 class UpdateProfileResult {
@@ -137,4 +207,45 @@ class TutorListResult {
 
   factory TutorListResult.error(String message) =>
       TutorListResult._(success: false, errorMessage: message);
+}
+
+class BookingListResult {
+  final bool success;
+  final List<Booking>? bookings;
+  final String? errorMessage;
+
+  const BookingListResult._({
+    required this.success,
+    this.bookings,
+    this.errorMessage,
+  });
+
+  factory BookingListResult.success(List<Booking> bookings) =>
+      BookingListResult._(success: true, bookings: bookings);
+
+  factory BookingListResult.error(String message) =>
+      BookingListResult._(success: false, errorMessage: message);
+}
+
+class JoinInfoResult {
+  final bool success;
+  final String? meetingUrl;
+  final String? roomPassword;
+  final String? errorMessage;
+
+  const JoinInfoResult._({
+    required this.success,
+    this.meetingUrl,
+    this.roomPassword,
+    this.errorMessage,
+  });
+
+  factory JoinInfoResult.success({
+    required String meetingUrl,
+    String? roomPassword,
+  }) =>
+      JoinInfoResult._(success: true, meetingUrl: meetingUrl, roomPassword: roomPassword);
+
+  factory JoinInfoResult.error(String message) =>
+      JoinInfoResult._(success: false, errorMessage: message);
 }
