@@ -92,7 +92,7 @@ class TextInput extends StatelessWidget {
     final effectiveFillColor = fillColor ?? colorScheme.surface;
     final effectiveBorderColor = borderColor ?? colorScheme.outline;
     // Compute once and reuse across all 5 border instances
-    final br = br;
+    final br = BorderRadius.circular(_effectiveRadius);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
