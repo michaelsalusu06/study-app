@@ -31,7 +31,7 @@ class StudentBottomNav extends StatelessWidget {
           children: [
             _NavItem(index: 0, icon: Icons.home_rounded,          label: AppStrings.home,     currentIndex: currentIndex, onTap: onTap),
             _NavItem(index: 1, icon: Icons.calendar_today_rounded, label: AppStrings.schedule,  currentIndex: currentIndex, onTap: onTap),
-            _NavItem(index: 2, icon: Icons.book_online_rounded,    label: AppStrings.booking,   currentIndex: currentIndex, onTap: onTap),
+            _NavItem(index: 2, icon: Icons.book_online_rounded,    label: AppStrings.messages,   currentIndex: currentIndex, onTap: onTap),
             _NavItem(index: 3, icon: Icons.person_rounded,         label: AppStrings.profile,   currentIndex: currentIndex, onTap: onTap),
           ],
         ),

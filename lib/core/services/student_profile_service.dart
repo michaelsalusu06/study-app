@@ -66,7 +66,7 @@ class StudentProfileService {
 
     try {
       final response = await http.get(
-        Uri.parse('${AppConfig.apiUrl}/user/profile/me'),
+        Uri.parse('${AppConfig.apiUrl}/auth/me'),
         headers: AuthState.instance.authHeaders,
       );
 

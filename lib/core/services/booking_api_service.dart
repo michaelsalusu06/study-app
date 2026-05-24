@@ -110,11 +110,11 @@ class BookingApiService {
     }
 
     final body = <String, dynamic>{
-      'tutor_id': tutorId,
-      'start_at': startAt,
+      'tutorId': tutorId,
+      'startAt': startAt,
     };
-    if (tutorOfferId != null) body['tutor_offer_id'] = tutorOfferId;
-    if (notes != null && notes.isNotEmpty) body['notes'] = notes;
+    if (tutorOfferId != null) body['tutorOfferId'] = tutorOfferId;
+    if (notes != null && notes.isNotEmpty) body['description'] = notes;
 
     try {
       final response = await http.post(
@@ -168,7 +168,7 @@ class BookingApiService {
   }
 
   // ── Get all bookings for the logged-in student ──────────────
-  /// GET /booking/my
+  /// GET /booking/student
   ///
   /// Optional [status] filter: "pending" | "confirmed" | "completed" | "cancelled"
   Future<GetMyBookingsResult> getMyBookings({String? status}) async {
@@ -180,7 +180,7 @@ class BookingApiService {
       final queryParams = <String, String>{};
       if (status != null) queryParams['status'] = status;
 
-      final uri = Uri.parse('${AppConfig.apiUrl}/booking/my')
+      final uri = Uri.parse('${AppConfig.apiUrl}/booking/student')
           .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http.get(uri, headers: AuthState.instance.authHeaders);
@@ -199,7 +199,7 @@ class BookingApiService {
   }
 
   // ── Update booking status ───────────────────────────────────
-  /// PATCH /booking/:id/status
+  /// PATCH /booking/:id/:action
   ///
   /// [status] — one of: "confirmed" | "cancelled" | "completed"
   Future<UpdateBookingStatusResult> updateBookingStatus({
@@ -210,11 +210,29 @@ class BookingApiService {
       return UpdateBookingStatusResult.error('You must be logged in.');
     }
 
+    // Map status to backend action endpoint
+    String action;
+    switch (status.toLowerCase()) {
+      case 'cancelled':
+        action = 'cancel';
+        break;
+      case 'confirmed':
+        action = 'confirm';
+        break;
+      case 'completed':
+        action = 'complete';
+        break;
+      case 'declined':
+        action = 'decline';
+        break;
+      default:
+        return UpdateBookingStatusResult.error('Invalid booking action: $status');
+    }
+
     try {
       final response = await http.patch(
-        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/status'),
+        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/$action'),
         headers: AuthState.instance.authHeaders,
-        body: jsonEncode({'status': status}),
       );
 
       final data = jsonDecode(response.body);

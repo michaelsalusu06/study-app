@@ -24,21 +24,21 @@ model bookings {
   /// coins deducted from student at booking creation
   coins_cost                             Int?                  @default(0)
   tutor_availability_id                  String?               @db.Uuid
-  /// student's reason for booking — shown to tutor before they confirm
-  description                            String?
+  reschedule_notes                       String?
+  reschedule_proposed_end                DateTime?             @db.Timestamptz(6)
   /// reschedule fields — set when tutor proposes a new time
   reschedule_proposed_start              DateTime?             @db.Timestamptz(6)
-  reschedule_proposed_end                DateTime?             @db.Timestamptz(6)
-  reschedule_notes                       String?
   reschedule_requested_by                String?               @db.Uuid
-  /// price negotiation — tutor proposes higher cost, student accepts/rejects
-  price_proposed_coins                   Int?
-  price_proposal_message                 String?
-  price_proposal_expires_at              DateTime?             @db.Timestamptz(6)
-  /// auto-decline pending bookings after this time (1 hour from creation)
-  expires_at                             DateTime?             @db.Timestamptz(6)
   /// set once session reminder notification is sent — prevents duplicates
   session_notified_at                    DateTime?             @db.Timestamptz(6)
+  /// student's reason for booking — shown to tutor before they confirm
+  description                            String?
+  /// auto-decline pending bookings after this time (1 hour from creation)
+  expires_at                             DateTime?             @db.Timestamptz(6)
+  price_proposal_expires_at              DateTime?             @db.Timestamptz(6)
+  price_proposal_message                 String?
+  /// price negotiation — tutor proposes higher cost, student accepts/rejects
+  price_proposed_coins                   Int?
   profiles_bookings_student_idToprofiles profiles              @relation("bookings_student_idToprofiles", fields: [student_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   tutor_availabilities                   tutor_availabilities? @relation(fields: [tutor_availability_id], references: [id], onUpdate: NoAction)
   profiles_bookings_tutor_idToprofiles   profiles              @relation("bookings_tutor_idToprofiles", fields: [tutor_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -114,9 +114,6 @@ model profiles {
   banned_by                              String?
   deactivated_at                         DateTime?              @db.Timestamptz(6)
   deactivated_by                         String?
-  /// ONLINE | OFFLINE | BUSY — updated by client heartbeat or explicit call
-  user_status                            String                 @default("OFFLINE")
-  last_seen_at                           DateTime?              @db.Timestamptz(6)
   /// false = temporarily deactivated by admin (reversible)
   is_active                              Boolean                @default(true)
   /// true = permanently banned by admin
@@ -127,6 +124,9 @@ model profiles {
   penalty_rating_knock                   Decimal                @default(0) @db.Decimal
   /// penalty active until this timestamp; null = no active penalty
   penalty_until                          DateTime?              @db.Timestamptz(6)
+  last_seen_at                           DateTime?              @db.Timestamptz(6)
+  /// ONLINE | OFFLINE | BUSY — updated by client heartbeat or explicit call
+  user_status                            String                 @default("OFFLINE")
   bookings_bookings_student_idToprofiles bookings[]             @relation("bookings_student_idToprofiles")
   bookings_bookings_tutor_idToprofiles   bookings[]             @relation("bookings_tutor_idToprofiles")
   coin_transactions                      coin_transactions[]
@@ -315,11 +315,11 @@ model withdrawal_requests {
 enum booking_status {
   pending
   confirmed
-  rescheduling
   cancelled
   completed
   failed
   declined
+  rescheduling
   expired
 }
 

@@ -11,7 +11,7 @@ class AppConfig {
   /// Flip to `false` when the backend is running.
   /// On Android emulator, the server at localhost is reachable via 10.0.2.2.
   /// On physical device, replace apiUrl with your machine's local IP (e.g. 192.168.x.x).
-  static bool useMock = true;
+  static bool useMock = false;
 
   // ── API base URL ───────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_strings.dart';
 import '../widgets/dashboard/student_home_tab.dart';
-import '../widgets/dashboard/student_learning_tab.dart';
+import '../widgets/dashboard/student_message_tab.dart'; 
 import '../widgets/dashboard/student_profile_tab.dart';
 import '../widgets/dashboard/student_schedule_tab.dart';
 
@@ -39,7 +39,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
             children: const [
               StudentHomeTab(),
               StudentScheduleTab(),
-              StudentLearningTab(),
+              StudentMessageTab(), 
               StudentProfileTab(),
             ],
           ),
@@ -66,7 +66,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         children: [
           _navItem(0, Icons.home_rounded, AppStrings.home),
           _navItem(1, Icons.calendar_today_rounded, AppStrings.schedule),
-          _navItem(2, Icons.play_circle_rounded, AppStrings.myLearning),
+          _navItem(2, Icons.chat_bubble_rounded, AppStrings.messages), 
           _navItem(3, Icons.person_rounded, AppStrings.profile),
         ],
       ),
@@ -103,8 +103,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               label,
               style: TextStyle(
                 fontSize: 10,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? AppColors.primary : AppColors.textDisabled,
               ),
             ),

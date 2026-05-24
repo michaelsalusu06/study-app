@@ -78,7 +78,7 @@ class UserApiService {
     final queryParams = <String, String>{};
     if (search != null && search.isNotEmpty) queryParams['search'] = search;
     if (subject != null && subject.isNotEmpty) queryParams['subject'] = subject;
-    if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();
+    if (maxPrice != null) queryParams['maxCoins'] = maxPrice.toString();
 
     final uri = Uri.parse('${AppConfig.apiUrl}/user/tutors')
         .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
@@ -101,6 +101,26 @@ class UserApiService {
     }
   }
 
+  // ─── Get Tutor Detail ─────────────────────────────────────────────────────
+
+  Future<TutorDetailResult> getTutorDetail(String tutorId) async {
+    final uri = Uri.parse('${AppConfig.apiUrl}/user/tutors/$tutorId');
+
+    try {
+      final response = await http
+          .get(uri, headers: {'Content-Type': 'application/json'})
+          .timeout(AppConfig.requestTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return TutorDetailResult.success(data);
+      }
+
+      return TutorDetailResult.error('Failed to load tutor (${response.statusCode})');
+    } catch (e) {
+      return TutorDetailResult.error('Network error. Please try again.');
+    }
+  }
 
   // ─── Get Student Bookings ─────────────────────────────────────────────────
 
@@ -169,6 +189,114 @@ class UserApiService {
       return JoinInfoResult.error('Network error. Please try again.');
     }
   }
+
+  // ─── Get Chat Thread List ─────────────────────────────────────────────────
+
+  Future<ChatThreadListResult> getChatThreadList() async {
+    if (!AuthState.instance.isLoggedIn) {
+      return ChatThreadListResult.error('Not authenticated.');
+    }
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiUrl}/messages/conversations'),
+            headers: AuthState.instance.authHeaders,
+          )
+          .timeout(AppConfig.requestTimeout);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        if (data is List) {
+          final list = data.whereType<Map<String, dynamic>>().toList();
+          return ChatThreadListResult.success(
+            list.map((e) => ChatThread.fromJson(e)).toList(),
+          );
+        }
+        return ChatThreadListResult.success([]);
+      }
+
+      return ChatThreadListResult.error('Failed to load chats (${response.statusCode})');
+    } catch (e) {
+      return ChatThreadListResult.error('Network error. Please try again.');
+    }
+  }
+
+  // ─── Get Chat Thread ──────────────────────────────────────────────────────
+
+  Future<ChatMessageListResult> getChatThread(String otherId) async {
+    if (!AuthState.instance.isLoggedIn) {
+      return ChatMessageListResult.error('Not authenticated.');
+    }
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${AppConfig.apiUrl}/messages/conversation/$otherId'),
+            headers: AuthState.instance.authHeaders,
+          )
+          .timeout(AppConfig.requestTimeout);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final messagesData = data['messages'];
+        if (messagesData is List) {
+          final messagesList = messagesData.whereType<Map<String, dynamic>>().toList();
+          return ChatMessageListResult.success(
+            messagesList.map((e) => ChatMessage.fromJson(e)).toList(),
+          );
+        }
+        return ChatMessageListResult.success([]);
+      }
+
+      return ChatMessageListResult.error('Failed to load messages (${response.statusCode})');
+    } catch (e) {
+      return ChatMessageListResult.error('Network error. Please try again.');
+    }
+  }
+
+  // ─── Send Message ─────────────────────────────────────────────────────────
+
+  Future<SendMessageResult> sendMessage({
+    required String toId,
+    required String content,
+    String? bookingId,
+  }) async {
+    if (!AuthState.instance.isLoggedIn) {
+      return SendMessageResult.error('Not authenticated.');
+    }
+
+    final body = <String, dynamic>{
+      'to_id': toId,
+      'content': content,
+      if (bookingId != null) 'booking_id': bookingId,
+    };
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${AppConfig.apiUrl}/messages'),
+            headers: AuthState.instance.authHeaders,
+            body: jsonEncode(body),
+          )
+          .timeout(AppConfig.requestTimeout);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (data is Map<String, dynamic>) {
+          return SendMessageResult.success(ChatMessage.fromJson(data));
+        }
+      }
+
+      return SendMessageResult.error(
+          data['message']?.toString() ?? 'Failed to send (${response.statusCode})');
+    } catch (e) {
+      return SendMessageResult.error('Network error. Please try again.');
+    }
+  }
 }
 
 // ─── Result Models ────────────────────────────────────────────────────────────
@@ -207,6 +335,24 @@ class TutorListResult {
 
   factory TutorListResult.error(String message) =>
       TutorListResult._(success: false, errorMessage: message);
+}
+
+class TutorDetailResult {
+  final bool success;
+  final Map<String, dynamic>? tutor;
+  final String? errorMessage;
+
+  const TutorDetailResult._({
+    required this.success,
+    this.tutor,
+    this.errorMessage,
+  });
+
+  factory TutorDetailResult.success(Map<String, dynamic> tutor) =>
+      TutorDetailResult._(success: true, tutor: tutor);
+
+  factory TutorDetailResult.error(String message) =>
+      TutorDetailResult._(success: false, errorMessage: message);
 }
 
 class BookingListResult {
@@ -248,4 +394,146 @@ class JoinInfoResult {
 
   factory JoinInfoResult.error(String message) =>
       JoinInfoResult._(success: false, errorMessage: message);
+}
+
+// ─── Chat Models ──────────────────────────────────────────────────────────────
+
+class ChatUser {
+  final String id;
+  final String? fullName;
+  final String? username;
+  final String? avatarUrl;
+  final String? status;
+
+  const ChatUser({
+    required this.id,
+    this.fullName,
+    this.username,
+    this.avatarUrl,
+    this.status,
+  });
+
+  factory ChatUser.fromJson(Map<String, dynamic> json) {
+    // Handle both snake_case and camelCase, and generic 'name' field
+    final name = json['full_name']?.toString() ?? 
+                 json['fullName']?.toString() ?? 
+                 json['name']?.toString();
+    
+    return ChatUser(
+      id: json['id']?.toString() ?? '',
+      fullName: name,
+      username: json['username']?.toString() ?? json['userName']?.toString(),
+      avatarUrl: json['avatar_url']?.toString() ?? json['avatarUrl']?.toString(),
+      status: json['user_status']?.toString() ?? json['status']?.toString(),
+    );
+  }
+
+  String get displayName {
+    if (fullName != null && fullName!.trim().isNotEmpty) return fullName!;
+    if (username != null && username!.trim().isNotEmpty) return username!;
+    return 'User ${id.length > 4 ? id.substring(0, 4) : id}';
+  }
+}
+
+class ChatThread {
+  final ChatUser partner;
+  final ChatMessage lastMessage;
+  final int unreadCount;
+
+  const ChatThread({
+    required this.partner,
+    required this.lastMessage,
+    required this.unreadCount,
+  });
+
+  factory ChatThread.fromJson(Map<String, dynamic> json) => ChatThread(
+        partner: ChatUser.fromJson(
+            json['partner'] is Map<String, dynamic> ? json['partner'] : {}),
+        lastMessage: ChatMessage.fromJson(
+            json['last_message'] is Map<String, dynamic> ? json['last_message'] : {}),
+        unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class ChatMessage {
+  final String id;
+  final String fromId;
+  final String? toId;
+  final String content;
+  final bool isRead;
+  final DateTime createdAt;
+
+  const ChatMessage({
+    required this.id,
+    required this.fromId,
+    this.toId,
+    required this.content,
+    required this.isRead,
+    required this.createdAt,
+  });
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
+        id: json['id']?.toString() ?? '',
+        fromId: json['from_id']?.toString() ?? '',
+        toId: json['to_id']?.toString(),
+        content: json['content']?.toString() ?? '',
+        isRead: json['is_read'] is bool ? json['is_read'] : false,
+        createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      );
+}
+
+// ─── Chat Result Classes ──────────────────────────────────────────────────────
+
+class ChatThreadListResult {
+  final bool success;
+  final List<ChatThread>? threads;
+  final String? errorMessage;
+
+  const ChatThreadListResult._({
+    required this.success,
+    this.threads,
+    this.errorMessage,
+  });
+
+  factory ChatThreadListResult.success(List<ChatThread> threads) =>
+      ChatThreadListResult._(success: true, threads: threads);
+
+  factory ChatThreadListResult.error(String message) =>
+      ChatThreadListResult._(success: false, errorMessage: message);
+}
+
+class ChatMessageListResult {
+  final bool success;
+  final List<ChatMessage>? messages;
+  final String? errorMessage;
+
+  const ChatMessageListResult._({
+    required this.success,
+    this.messages,
+    this.errorMessage,
+  });
+
+  factory ChatMessageListResult.success(List<ChatMessage> messages) =>
+      ChatMessageListResult._(success: true, messages: messages);
+
+  factory ChatMessageListResult.error(String message) =>
+      ChatMessageListResult._(success: false, errorMessage: message);
+}
+
+class SendMessageResult {
+  final bool success;
+  final ChatMessage? message;
+  final String? errorMessage;
+
+  const SendMessageResult._({
+    required this.success,
+    this.message,
+    this.errorMessage,
+  });
+
+  factory SendMessageResult.success(ChatMessage message) =>
+      SendMessageResult._(success: true, message: message);
+
+  factory SendMessageResult.error(String message) =>
+      SendMessageResult._(success: false, errorMessage: message);
 }

@@ -107,7 +107,7 @@ class TutorBrowseService {
       final queryParams = <String, String>{};
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
       if (subject != null && subject.isNotEmpty) queryParams['subject'] = subject;
-      if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toStringAsFixed(0);
+      if (maxPrice != null) queryParams['maxCoins'] = maxPrice.toStringAsFixed(0);
 
       final uri = Uri.parse('${AppConfig.apiUrl}/user/tutors')
           .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
