@@ -198,62 +198,48 @@ class BookingApiService {
     }
   }
 
-  // ── Update booking status ───────────────────────────────────
-  /// PATCH /booking/:id/:action
-  ///
-  /// [status] — one of: "confirmed" | "cancelled" | "completed"
-  Future<UpdateBookingStatusResult> updateBookingStatus({
-    required String bookingId,
-    required String status,
-  }) async {
-    if (!AuthState.instance.isLoggedIn) {
-      return UpdateBookingStatusResult.error('You must be logged in.');
-    }
-
-    // Map status to backend action endpoint
-    String action;
-    switch (status.toLowerCase()) {
-      case 'cancelled':
-        action = 'cancel';
-        break;
-      case 'confirmed':
-        action = 'confirm';
-        break;
-      case 'completed':
-        action = 'complete';
-        break;
-      case 'declined':
-        action = 'decline';
-        break;
-      default:
-        return UpdateBookingStatusResult.error('Invalid booking action: $status');
-    }
-
+  // ── Get tutor availability slots ────────────────────────────
+  Future<AvailabilityResult> getTutorAvailability(String tutorId) async {
     try {
-      final response = await http.patch(
-        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/$action'),
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiUrl}/user/tutor/$tutorId/availability'),
         headers: AuthState.instance.authHeaders,
       );
-
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200) {
-        final booking = data['booking'] as Map<String, dynamic>? ?? data;
-        return UpdateBookingStatusResult.success(booking);
+        return AvailabilityResult.success((data as List).cast<Map<String, dynamic>>());
       }
-
-      if (response.statusCode == 403) {
-        return UpdateBookingStatusResult.error('You are not allowed to update this booking.');
-      }
-
-      if (response.statusCode == 404) {
-        return UpdateBookingStatusResult.error('Booking not found.');
-      }
-
-      final message = data['message'] ?? data['error'] ?? 'Failed to update booking.';
-      return UpdateBookingStatusResult.error(message.toString());
+      return AvailabilityResult.error(data['message']?.toString() ?? 'Error');
     } catch (e) {
-      return UpdateBookingStatusResult.error('Network error: $e');
+      return AvailabilityResult.error('Network error: $e');
     }
   }
+
+  // ── Submit a review ─────────────────────────────────────────
+  Future<bool> submitReview(String bookingId, {required int rating, required String comment}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/review'),
+        headers: AuthState.instance.authHeaders,
+        body: jsonEncode({
+          'rating': rating,
+          'comment': comment,
+        }),
+      );
+      return response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
+class AvailabilityResult {
+  final bool success;
+  final List<Map<String, dynamic>>? slots;
+  final String? errorMessage;
+  AvailabilityResult._({required this.success, this.slots, this.errorMessage});
+  factory AvailabilityResult.success(List<Map<String, dynamic>> slots) =>
+      AvailabilityResult._(success: true, slots: slots);
+  factory AvailabilityResult.error(String msg) =>
+      AvailabilityResult._(success: false, errorMessage: msg);
 }

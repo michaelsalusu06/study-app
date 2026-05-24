@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_sizes.dart';
@@ -25,6 +26,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isLoading = true;
   bool _isSending = false;
   String? _error;
+  Timer? _pollingTimer;
 
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
@@ -34,31 +36,67 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _load(initial: true);
+    _startPolling();
   }
 
   @override
   void dispose() {
+    _stopPolling();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() { _isLoading = true; _error = null; });
+  void _startPolling() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      _load(initial: false);
+    });
+  }
+
+  void _stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
+
+  Future<void> _load({bool initial = false}) async {
+    if (initial) {
+      setState(() { _isLoading = true; _error = null; });
+    }
 
     final result = await UserApiService.instance.getChatThread(widget.otherId);
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-      if (result.success) {
-        _messages = result.messages ?? [];
-        _scrollToBottom();
-      } else {
-        _error = result.errorMessage;
+    if (result.success) {
+      final newMessages = result.messages ?? [];
+      
+      // Update only if there are changes to avoid unnecessary rebuilds and scroll jumps
+      if (newMessages.length != _messages.length || 
+          (newMessages.isNotEmpty && _messages.isNotEmpty && newMessages.last.id != _messages.last.id)) {
+        setState(() {
+          _messages = newMessages;
+          _isLoading = false;
+        });
+        
+        // Scroll to bottom only if it's the initial load or if we're already near the bottom
+        if (initial || _isNearBottom()) {
+          _scrollToBottom();
+        }
+      } else if (initial) {
+        setState(() => _isLoading = false);
       }
-    });
+    } else if (initial) {
+      setState(() {
+        _isLoading = false;
+        _error = result.errorMessage;
+      });
+    }
+  }
+
+  bool _isNearBottom() {
+    if (!_scrollController.hasClients) return true;
+    final pos = _scrollController.position;
+    return pos.maxScrollExtent - pos.pixels < 100;
   }
 
   Future<void> _send() async {
@@ -66,9 +104,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (content.isEmpty || _isSending) return;
 
     _inputController.clear();
-    setState(() => _isSending = true);
-
-    // Optimistic UI — tambahkan pesan langsung sebelum response
+    // No longer setting _isSending to true globally to allow optimistic UI to feel faster
+    // but we can track it locally if we want to show a spinner on the send button
+    
+    // Optimistic UI
     final optimistic = ChatMessage(
       id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
       fromId: _myId,
@@ -77,7 +116,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       isRead: false,
       createdAt: DateTime.now(),
     );
-    setState(() => _messages.add(optimistic));
+    
+    setState(() {
+      _messages.add(optimistic);
+    });
     _scrollToBottom();
 
     final result = await UserApiService.instance.sendMessage(
@@ -86,25 +128,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
 
     if (!mounted) return;
-    setState(() => _isSending = false);
 
     if (result.success) {
-      // Ganti pesan optimistic dengan yang asli dari server
+      // The next poll will likely bring the real message, 
+      // but we can replace it now for immediate feedback
       final idx = _messages.indexWhere((m) => m.id == optimistic.id);
       if (idx != -1 && result.message != null) {
         setState(() => _messages[idx] = result.message!);
       }
     } else {
-      // Hapus pesan optimistic kalau gagal
+      // Remove optimistic message if failed
       setState(() => _messages.removeWhere((m) => m.id == optimistic.id));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.errorMessage ?? 'Failed to send message'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? 'Failed to send message'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/services/user_api_service.dart';
+import '../../../../core/services/booking_api_service.dart';
 import '../../../../models/booking_model.dart';
 
 class StudentScheduleTab extends StatefulWidget {
@@ -182,7 +184,10 @@ class _StudentScheduleTabState extends State<StudentScheduleTab>
         padding: const EdgeInsets.fromLTRB(
             AppSizes.lg, 0, AppSizes.lg, 100),
         itemCount: bookings.length,
-        itemBuilder: (context, i) => _BookingCard(booking: bookings[i]),
+        itemBuilder: (context, i) => _BookingCard(
+          booking: bookings[i],
+          onRefresh: _load,
+        ),
       ),
     );
   }
@@ -230,7 +235,45 @@ class _StudentScheduleTabState extends State<StudentScheduleTab>
 // ─────────────────────────────────────────────────────────────
 class _BookingCard extends StatelessWidget {
   final Booking booking;
-  const _BookingCard({required this.booking});
+  final VoidCallback onRefresh;
+  const _BookingCard({required this.booking, required this.onRefresh});
+
+  Future<void> _handleJoin(BuildContext context) async {
+    final result = await UserApiService.instance.getJoinInfo(booking.id);
+    if (result.success && result.meetingUrl != null) {
+      final uri = Uri.parse(result.meetingUrl!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open meeting URL')));
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.errorMessage ?? 'Cannot join session yet')));
+    }
+  }
+
+  Future<void> _handleCancel(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Booking?'),
+        content: const Text('Are you sure you want to cancel this session? Your coins will be refunded.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, Cancel')),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final res = await UserApiService.instance.cancelBooking(booking.id);
+      if (res.success) {
+        onRefresh();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res.message ?? 'Failed to cancel.')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -292,7 +335,7 @@ class _BookingCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                 ),
                 child: Text(
-                  booking.status.label, // pakai extension dari BookingStatusX
+                  booking.status.label,
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -326,16 +369,121 @@ class _BookingCard extends StatelessWidget {
                     fontSize: 12, color: AppColors.textSecondary),
               ),
               const Spacer(),
-              Text(
-                'Rp ${_fmtPrice(booking.price)}',
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary),
-              ),
+              if (booking.status == BookingStatus.completed)
+                TextButton(
+                  onPressed: () => _showReviewDialog(context),
+                  style: TextButton.styleFrom(
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Rate', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                )
+              else if (booking.status == BookingStatus.confirmed)
+                ElevatedButton(
+                  onPressed: () => _handleJoin(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Join', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                )
+              else if (booking.status == BookingStatus.pending)
+                TextButton(
+                  onPressed: () => _handleCancel(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Cancel', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.toll_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_fmtPrice(booking.price)} coins',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary),
+                    ),
+                  ],
+                ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showReviewDialog(BuildContext context) {
+    int rating = 5;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Rate your Session'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) => IconButton(
+                  icon: Icon(
+                    index < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: AppColors.starGold,
+                    size: 32,
+                  ),
+                  onPressed: () => setState(() => rating = index + 1),
+                )),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Leave a comment (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final success = await BookingApiService.instance.submitReview(
+                  booking.id,
+                  rating: rating,
+                  comment: commentController.text.trim(),
+                );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Review submitted!' : 'Failed to submit review.'),
+                      backgroundColor: success ? AppColors.success : AppColors.error,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_config.dart';
@@ -19,25 +21,24 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController fullNameController = TextEditingController();
-  final TextEditingController dobController = TextEditingController();
-
-  String selectedRole = 'student';
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController bioController = TextEditingController();
 
   bool _isLoading = false;
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickDob() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(now.year - 18, now.month, now.day),
-      firstDate: DateTime(1900),
-      lastDate: now,
-    );
-    if (picked != null && mounted) {
-      final y = picked.year.toString().padLeft(4, '0');
-      final m = picked.month.toString().padLeft(2, '0');
-      final d = picked.day.toString().padLeft(2, '0');
-      setState(() => dobController.text = '$y-$m-$d');
+  @override
+  void initState() {
+    super.initState();
+    fullNameController.text = AuthState.instance.fullName ?? '';
+    usernameController.text = AuthState.instance.username ?? '';
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image != null) {
+      setState(() => _selectedImage = File(image.path));
     }
   }
 
@@ -46,26 +47,26 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
     setState(() => _isLoading = true);
 
-    final apiRole = selectedRole == 'tutor' ? 'TUTOR' : 'STUDENT';
+    String? uploadedUrl;
+    if (_selectedImage != null) {
+      // Logic for uploading to S3/Cloudinary would go here.
+      // For now, we use a placeholder or keep current URL.
+      uploadedUrl = AuthState.instance.avatarUrl; 
+    }
 
     if (AppConfig.useMock) {
-      // Mock mode: update AuthState locally and navigate
       AuthState.instance
         ..fullName = fullNameController.text.trim()
-        ..role = apiRole;
+        ..username = usernameController.text.trim();
       await Future.delayed(const Duration(milliseconds: 800));
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nice! Your profile has been updated.'),
-          backgroundColor: Colors.green,
-        ),
-      );
     } else {
       final result = await UserApiService.instance.updateProfile(
         fullName: fullNameController.text.trim(),
-        role: apiRole,
+        username: usernameController.text.trim(),
+        bio: bioController.text.trim(),
+        avatarUrl: uploadedUrl,
       );
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -80,21 +81,31 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         return;
       }
 
-      // Sync updated role back into AuthState
-      AuthState.instance.role = result.user?['role']?.toString() ?? apiRole;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nice! Your profile has been updated.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final userData = result.user;
+      if (userData != null) {
+        AuthState.instance.fullName = userData['full_name']?.toString();
+        AuthState.instance.username = userData['username']?.toString();
+        AuthState.instance.avatarUrl = userData['avatar_url']?.toString();
+      }
     }
 
     if (!mounted) return;
-    if (selectedRole == 'tutor') {
-      Navigator.of(context).pushReplacementNamed('/teacher-dashboard');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Profile updated successfully!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
     } else {
-      Navigator.of(context).pushReplacementNamed('/student-dashboard');
+      final role = AuthState.instance.role?.toLowerCase();
+      if (role == 'tutor' || role == 'teacher') {
+        Navigator.of(context).pushReplacementNamed('/teacher-dashboard');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/student-dashboard');
+      }
     }
   }
 
@@ -109,58 +120,11 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     );
   }
 
-  Widget _buildRoleChip({
-    required String label,
-    required String value,
-  }) {
-    final selected = selectedRole == value;
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => setState(() => selectedRole = value),
-            borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.lg),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.info : AppColors.surface,
-                borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-                border: Border.all(
-                  color: AppColors.info,
-                  width: selected ? 0 : 1.5,
-                ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.info.withOpacity(0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: selected ? AppColors.surface : AppColors.info,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     fullNameController.dispose();
-    dobController.dispose();
+    usernameController.dispose();
+    bioController.dispose();
     super.dispose();
   }
 
@@ -170,9 +134,18 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.info,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
       body: Column(
         children: [
-          SizedBox(height: MediaQuery.of(context).padding.top + AppSizes.md),
+          SizedBox(height: MediaQuery.of(context).padding.top + 50),
           Expanded(
             child: Container(
               width: double.infinity,
@@ -195,39 +168,52 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Complete Identity',
+                        'Edit Profile',
                         textAlign: TextAlign.center,
                         style: textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: AppColors.info,
                         ),
                       ),
-                      const SizedBox(height: AppSizes.sm),
-                      Text(
-                        'Complete your identity to continue your journey',
-                        textAlign: TextAlign.center,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: AppColors.info.withOpacity(0.85),
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.lg),
-                      const Divider(color: AppColors.divider),
-                      const SizedBox(height: AppSizes.lg),
-                      Text(
-                        'I start as a...',
-                        textAlign: TextAlign.center,
-                        style: textTheme.titleSmall?.copyWith(
-                          color: AppColors.info,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                       const SizedBox(height: AppSizes.md),
-                      Row(
-                        children: [
-                          _buildRoleChip(label: 'Student', value: 'student'),
-                          _buildRoleChip(label: 'Tutor', value: 'tutor'),
-                        ],
+                      
+                      // Avatar Picker
+                      Center(
+                        child: GestureDetector(
+                          onTap: _pickImage,
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: AppColors.info.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.info, width: 2),
+                                  image: _selectedImage != null
+                                    ? DecorationImage(image: FileImage(_selectedImage!), fit: BoxFit.cover)
+                                    : (AuthState.instance.avatarUrl != null
+                                        ? DecorationImage(image: NetworkImage(AuthState.instance.avatarUrl!), fit: BoxFit.cover)
+                                        : null),
+                                ),
+                                child: (_selectedImage == null && AuthState.instance.avatarUrl == null)
+                                  ? const Icon(Icons.camera_alt_rounded, color: AppColors.info, size: 32)
+                                  : null,
+                              ),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: AppColors.info, shape: BoxShape.circle),
+                                  child: const Icon(Icons.edit_rounded, color: Colors.white, size: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
+
                       const SizedBox(height: AppSizes.lg),
                       const Divider(color: AppColors.divider),
                       const SizedBox(height: AppSizes.lg),
@@ -249,30 +235,41 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                         },
                       ),
                       const SizedBox(height: AppSizes.md),
-                      _buildLabel('Date of Birth'),
+                      _buildLabel('Username'),
                       const SizedBox(height: AppSizes.xs),
                       TextInput(
-                        controller: dobController,
-                        hint: 'Enter your date of birth',
-                        prefixIcon: Icons.cake_outlined,
-                        suffixIcon: Icons.calendar_today_outlined,
-                        onSuffixIconPressed: _pickDob,
-                        readOnly: true,
-                        onTap: _pickDob,
+                        controller: usernameController,
+                        hint: 'Choose a unique username',
+                        prefixIcon: Icons.alternate_email_rounded,
+                        textInputAction: TextInputAction.next,
                         borderColor: AppColors.info,
                         borderRadius: AppSizes.radiusLg,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please select your date of birth';
+                            return 'Please enter a username';
+                          }
+                          if (value.length < 3) {
+                            return 'Username must be at least 3 characters';
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: AppSizes.md),
+                      _buildLabel('Bio (Optional)'),
+                      const SizedBox(height: AppSizes.xs),
+                      TextInput(
+                        controller: bioController,
+                        hint: 'Tell us a bit about yourself',
+                        prefixIcon: Icons.description_outlined,
+                        maxLines: 3,
+                        borderColor: AppColors.info,
+                        borderRadius: AppSizes.radiusLg,
                       ),
                       const SizedBox(height: AppSizes.lg),
                       const Divider(color: AppColors.divider),
                       const SizedBox(height: AppSizes.xl),
                       PrimaryButton(
-                        text: 'Submit',
+                        text: 'Save Changes',
                         onPressed: _submitCompleteIdentity,
                         isLoading: _isLoading,
                         radius: AppSizes.radiusFull,

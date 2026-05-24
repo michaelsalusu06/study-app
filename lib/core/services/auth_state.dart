@@ -1,8 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// In-memory singleton that holds authenticated user state.
 /// Automatically persists to/from SharedPreferences so state survives restarts.
-class AuthState {
+class AuthState extends ChangeNotifier {
   AuthState._();
   static final AuthState instance = AuthState._();
 
@@ -10,7 +11,31 @@ class AuthState {
   String? userId;
   String? email;
   String? role;
-  String? fullName;
+  
+  String? _username;
+  String? get username => _username;
+  set username(String? val) {
+    _username = val;
+    _persist();
+    notifyListeners();
+  }
+
+  String? _fullName;
+  String? get fullName => _fullName;
+  set fullName(String? val) {
+    _fullName = val;
+    _persist();
+    notifyListeners();
+  }
+
+  int _coinsBalance = 0;
+  int get coinsBalance => _coinsBalance;
+  set coinsBalance(int val) {
+    _coinsBalance = val;
+    _persist();
+    notifyListeners();
+  }
+
   String? avatarUrl;
 
   static const _kToken = 'auth_access_token';
@@ -18,6 +43,8 @@ class AuthState {
   static const _kEmail = 'auth_email';
   static const _kRole = 'auth_role';
   static const _kFullName = 'auth_full_name';
+  static const _kUsername = 'auth_username';
+  static const _kCoinsBalance = 'auth_coins_balance';
   static const _kAvatarUrl = 'auth_avatar_url';
 
   // ---------------------------------------------------------------------------
@@ -32,12 +59,23 @@ class AuthState {
     userId = user['id']?.toString();
     email = user['email']?.toString();
     role = user['role']?.toString();
-    fullName = user['full_name']?.toString()
+    _username = user['username']?.toString();
+    _fullName = user['full_name']?.toString()
         ?? user['fullName']?.toString()
         ?? user['name']?.toString();
+    
+    // Scan for balance in both top level and nested user
+    final dynamic balance = data['coins_balance'] 
+                         ?? data['coin_balance'] 
+                         ?? user['coins_balance'] 
+                         ?? user['coin_balance'];
+    
+    _coinsBalance = (balance as num?)?.toInt() ?? 0;
+    
     avatarUrl = user['avatar_url']?.toString();
 
     await _persist();
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
@@ -50,8 +88,11 @@ class AuthState {
     userId = prefs.getString(_kUserId);
     email = prefs.getString(_kEmail);
     role = prefs.getString(_kRole);
-    fullName = prefs.getString(_kFullName);
+    _username = prefs.getString(_kUsername);
+    _fullName = prefs.getString(_kFullName);
+    _coinsBalance = prefs.getInt(_kCoinsBalance) ?? 0;
     avatarUrl = prefs.getString(_kAvatarUrl);
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
@@ -63,9 +104,12 @@ class AuthState {
     userId = null;
     email = null;
     role = null;
-    fullName = null;
+    _username = null;
+    _fullName = null;
+    _coinsBalance = 0;
     avatarUrl = null;
     _clearPrefs();
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
@@ -89,7 +133,9 @@ class AuthState {
     if (userId != null) await prefs.setString(_kUserId, userId!);
     if (email != null) await prefs.setString(_kEmail, email!);
     if (role != null) await prefs.setString(_kRole, role!);
-    if (fullName != null) await prefs.setString(_kFullName, fullName!);
+    if (_username != null) await prefs.setString(_kUsername, _username!);
+    if (_fullName != null) await prefs.setString(_kFullName, _fullName!);
+    await prefs.setInt(_kCoinsBalance, _coinsBalance);
     if (avatarUrl != null) await prefs.setString(_kAvatarUrl, avatarUrl!);
   }
 
@@ -99,7 +145,9 @@ class AuthState {
     await prefs.remove(_kUserId);
     await prefs.remove(_kEmail);
     await prefs.remove(_kRole);
+    await prefs.remove(_kUsername);
     await prefs.remove(_kFullName);
+    await prefs.remove(_kCoinsBalance);
     await prefs.remove(_kAvatarUrl);
   }
 }

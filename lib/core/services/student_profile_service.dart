@@ -73,7 +73,23 @@ class StudentProfileService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        return GetMyProfileResult.success(data as Map<String, dynamic>);
+        final profileData = data as Map<String, dynamic>;
+        
+        // --- Deep Scan for Coin Balance ---
+        // 1. Check top level
+        // 2. Check inside 'user' object if it exists
+        final nestedUser = profileData['user'] as Map<String, dynamic>?;
+        
+        final dynamic balance = profileData['coins_balance'] 
+                             ?? profileData['coin_balance']
+                             ?? nestedUser?['coins_balance']
+                             ?? nestedUser?['coin_balance']
+                             ?? profileData['balance'];
+        
+        if (balance != null) {
+          AuthState.instance.coinsBalance = (balance as num).toInt();
+        }
+        return GetMyProfileResult.success(profileData);
       }
 
       if (response.statusCode == 401) {
@@ -90,4 +106,70 @@ class StudentProfileService {
       return GetMyProfileResult.error('Network error: $e');
     }
   }
+
+  // ── Get notifications ───────────────────────────────────────
+  Future<NotificationListResult> getNotifications({int page = 1}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiUrl}/notifications?page=$page'),
+        headers: AuthState.instance.authHeaders,
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final list = (data['data'] as List).cast<Map<String, dynamic>>();
+        return NotificationListResult.success(list);
+      }
+      return NotificationListResult.error(data['message']?.toString() ?? 'Error');
+    } catch (e) {
+      return NotificationListResult.error('Network error: $e');
+    }
+  }
+
+  Future<bool> markSeen(String id) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${AppConfig.apiUrl}/notifications/$id/seen'),
+        headers: AuthState.instance.authHeaders,
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> markAllSeen() async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${AppConfig.apiUrl}/notifications/seen-all'),
+        headers: AuthState.instance.authHeaders,
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<int> getUnseenCount() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiUrl}/notifications/unseen-count'),
+        headers: AuthState.instance.authHeaders,
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['unseen_count'] ?? 0;
+      }
+    } catch (_) {}
+    return 0;
+  }
+}
+
+class NotificationListResult {
+  final bool success;
+  final List<Map<String, dynamic>>? notifications;
+  final String? errorMessage;
+  NotificationListResult._({required this.success, this.notifications, this.errorMessage});
+  factory NotificationListResult.success(List<Map<String, dynamic>> list) =>
+      NotificationListResult._(success: true, notifications: list);
+  factory NotificationListResult.error(String msg) =>
+      NotificationListResult._(success: false, errorMessage: msg);
 }

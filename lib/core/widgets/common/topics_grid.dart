@@ -10,12 +10,12 @@ class TopicsGrid extends StatelessWidget {
   static const _topics = [
     (Icons.calculate_outlined, 'Math'),
     (Icons.code_rounded, 'Coding'),
-    (Icons.language_rounded, 'Language'),
+    (Icons.language_rounded, 'English'),
     (Icons.music_note_rounded, 'Music'),
     (Icons.science_outlined, 'Science'),
     (Icons.brush_rounded, 'Art'),
     (Icons.history_edu_rounded, 'History'),
-    (Icons.fitness_center_rounded, 'PE'),
+    (Icons.laptop_chromebook_rounded, 'Design'),
   ];
 
   @override

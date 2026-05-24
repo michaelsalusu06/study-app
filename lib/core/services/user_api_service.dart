@@ -104,7 +104,7 @@ class UserApiService {
   // ─── Get Tutor Detail ─────────────────────────────────────────────────────
 
   Future<TutorDetailResult> getTutorDetail(String tutorId) async {
-    final uri = Uri.parse('${AppConfig.apiUrl}/user/tutors/$tutorId');
+    final uri = Uri.parse('${AppConfig.apiUrl}/user/tutor/$tutorId');
 
     try {
       final response = await http
@@ -297,9 +297,77 @@ class UserApiService {
       return SendMessageResult.error('Network error. Please try again.');
     }
   }
+  // ─── Coin History ─────────────────────────────────────────────────────────
+
+  Future<CoinHistoryResult> getCoinHistory() async {
+    if (!AuthState.instance.isLoggedIn) return CoinHistoryResult.error('Not authenticated.');
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConfig.apiUrl}/coins/history'),
+        headers: AuthState.instance.authHeaders,
+      );
+      if (response.statusCode == 200) {
+        final list = jsonDecode(response.body) as List;
+        return CoinHistoryResult.success(list.cast<Map<String, dynamic>>());
+      }
+      return CoinHistoryResult.error('Failed to load history (${response.statusCode})');
+    } catch (e) {
+      return CoinHistoryResult.error('Network error.');
+    }
+  }
+
+  // ─── Booking Actions ──────────────────────────────────────────────────────
+
+  Future<SimpleResult> cancelBooking(String bookingId) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/cancel'),
+        headers: AuthState.instance.authHeaders,
+      );
+      return SimpleResult(success: response.statusCode == 200, message: jsonDecode(response.body)['message']?.toString());
+    } catch (_) {
+      return SimpleResult(success: false, message: 'Network error.');
+    }
+  }
+
+  Future<SimpleResult> proposeReschedule(String bookingId, DateTime newStart) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/propose-reschedule'),
+        headers: AuthState.instance.authHeaders,
+        body: jsonEncode({'newStartAt': newStart.toIso8601String()}),
+      );
+      return SimpleResult(success: response.statusCode == 200, message: jsonDecode(response.body)['message']?.toString());
+    } catch (_) {
+      return SimpleResult(success: false, message: 'Network error.');
+    }
+  }
+
+  // ─── Avatar Upload ────────────────────────────────────────────────────────
+
+  Future<SimpleResult> updateAvatar(String imageUrl) async {
+    // Note: This assumes the image is already uploaded or we're sending a URL.
+    // Real multipart upload would use http.MultipartRequest.
+    return updateProfile(avatarUrl: imageUrl).then((res) => SimpleResult(success: res.success, message: res.errorMessage));
+  }
 }
 
 // ─── Result Models ────────────────────────────────────────────────────────────
+
+class SimpleResult {
+  final bool success;
+  final String? message;
+  SimpleResult({required this.success, this.message});
+}
+
+class CoinHistoryResult {
+  final bool success;
+  final List<Map<String, dynamic>>? history;
+  final String? errorMessage;
+  CoinHistoryResult._({required this.success, this.history, this.errorMessage});
+  factory CoinHistoryResult.success(List<Map<String, dynamic>> data) => CoinHistoryResult._(success: true, history: data);
+  factory CoinHistoryResult.error(String msg) => CoinHistoryResult._(success: false, errorMessage: msg);
+}
 
 class UpdateProfileResult {
   final bool success;

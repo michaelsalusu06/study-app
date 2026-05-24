@@ -4,6 +4,7 @@ import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/services/user_api_service.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../models/tutor_profile.dart';
+import 'booking_screen.dart';
 
 class TutorDetailScreen extends StatefulWidget {
   final String tutorId;
@@ -78,11 +79,19 @@ class _TutorDetailScreenState extends State<TutorDetailScreen> {
     final username = tutor['username'] as String?;
     final bio = tutor['bio'] as String?;
     final avatarUrl = tutor['avatar_url'] as String?;
-    final rating = (tutor['overall_rating'] as num?)?.toDouble() ?? 0;
-    final ratingCount = (tutor['rating_count'] as num?)?.toInt() ?? 0;
+    
+    // Safely parse numbers from dynamic API response
+    final rating = double.tryParse(tutor['overall_rating']?.toString() ?? '0') ?? 0.0;
+    final ratingCount = int.tryParse(tutor['rating_count']?.toString() ?? '0') ?? 0;
+    
     final subjects = (tutor['subjects'] as List?)?.map((e) => e.toString()).toList() ?? [];
     final offers = (tutor['tutor_offers'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final initials = name.trim().split(' ').map((e) => e[0]).take(2).join().toUpperCase();
+    
+    // Robust initials generation to avoid RangeError
+    final nameParts = name.trim().split(' ').where((s) => s.isNotEmpty).toList();
+    final initials = nameParts.isNotEmpty 
+        ? nameParts.map((e) => e[0]).take(2).join().toUpperCase()
+        : '?';
 
     return CustomScrollView(
       slivers: [
@@ -272,8 +281,10 @@ class _OfferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = offer['title'] as String? ?? 'Session';
     final summary = offer['summary'] as String?;
-    final price = (offer['price_per_hour'] as num?)?.toDouble() ?? 0;
-    final duration = (offer['duration_minutes'] as num?)?.toInt() ?? 60;
+    
+    // Safely parse numbers from dynamic API response
+    final coinsPerHour = int.tryParse(offer['coins_per_hour']?.toString() ?? '0') ?? 0;
+    final duration = int.tryParse(offer['duration_minutes']?.toString() ?? '60') ?? 60;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.md),
@@ -330,12 +341,18 @@ class _OfferCard extends StatelessWidget {
                           fontSize: 12, color: AppColors.textSecondary)),
                 ],
                 const SizedBox(height: 6),
-                Text(
-                  'Rp ${_fmt(price)}/hr',
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary),
+                Row(
+                  children: [
+                    const Icon(Icons.toll_rounded, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$coinsPerHour coins/hr',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -346,17 +363,14 @@ class _OfferCard extends StatelessWidget {
             height: 36,
             child: ElevatedButton(
               onPressed: () {
-                // TODO: navigate to booking screen
-                // Navigator.of(context).pushNamed('/booking', arguments: {
-                //   'tutorId': tutorId,
-                //   'offerId': offer['id'],
-                //   'tutorName': tutorName,
-                //   'offerTitle': title,
-                //   'price': price,
-                //   'duration': duration,
-                // });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Booking coming soon!')),
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => BookingScreen(
+                      tutorId: tutorId,
+                      tutorName: tutorName,
+                      offer: offer,
+                    ),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -372,12 +386,6 @@ class _OfferCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _fmt(double price) {
-    if (price >= 1000000) return '${(price / 1000000).toStringAsFixed(1)}jt';
-    if (price >= 1000) return '${(price / 1000).toStringAsFixed(0)}k';
-    return price.toStringAsFixed(0);
   }
 }
 
