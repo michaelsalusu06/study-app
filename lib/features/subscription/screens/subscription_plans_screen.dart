@@ -56,15 +56,15 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       name: 'Pro',
       monthlyPrice: 39.99,
       yearlyPrice: 399.99,
-      description: 'For professionals & teams',
+      description: 'For you that want to waste some money',
       features: [
         'All Premium features',
         '1-on-1 tutoring sessions',
         'Personalized learning path',
         'Career guidance',
-        'Project reviews',
         'Private community access',
-        'Early access to new courses',
+        'Be The most handsome student',
+        'Can meet with the developer and they do whatever you want'
       ],
     ),
   ];
@@ -378,7 +378,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '\$${price.toStringAsFixed(0)}',
+                              '\Rp${price.toStringAsFixed(0)}',
                               style: textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: isSelected

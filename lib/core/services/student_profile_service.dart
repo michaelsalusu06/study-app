@@ -107,6 +107,15 @@ class StudentProfileService {
     }
   }
 
+//* continue this code later
+// Future<GetCoins> getCoin() async {
+//   try {
+//     final response = await http.get(Uri.parse('${AppConfig.apiUrl}/coins/balance'));
+//   } catch (e) {
+//     return e      
+//   }
+// }
+
   // ── Get notifications ───────────────────────────────────────
   Future<NotificationListResult> getNotifications({int page = 1}) async {
     try {
