@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_config.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/widgets/buttons/primary_button.dart';
 import '../../../core/widgets/inputs/text_input.dart';
@@ -181,7 +182,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               Text(
-                '\Rp 19.99',
+                '${AppConfig.currencySymbol} ${AppConfig.premiumMonthlyPrice.toStringAsFixed(2)}',
                 style: textTheme.bodyMedium,
               ),
             ],
@@ -197,7 +198,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               Text(
-                '\Rp0.00',
+                '${AppConfig.currencySymbol}0.00',
                 style: textTheme.bodyMedium,
               ),
             ],
@@ -215,7 +216,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               Text(
-                '\Rp 19.99',
+                '${AppConfig.currencySymbol} ${AppConfig.premiumMonthlyPrice.toStringAsFixed(2)}',
                 style: textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: colorScheme.primary,
@@ -464,7 +465,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
       child: PrimaryButton(
-        text: 'Pay \Rp 19.99',
+        text: 'Pay ${AppConfig.currencySymbol} ${AppConfig.premiumMonthlyPrice.toStringAsFixed(2)}',
         onPressed: () {
           Navigator.of(context).pushReplacementNamed('/payment-success');
         },

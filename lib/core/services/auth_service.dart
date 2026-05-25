@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../constants/app_config.dart';
+import '../network/api_client.dart';
 import 'auth_state.dart';
+import 'student_profile_service.dart';
 
 class AuthService {
   AuthService._();
@@ -15,6 +15,10 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    if (!email.contains('@') || !email.contains('.')) {
+      return AuthResult.error('Please enter a valid email address.');
+    }
+
     if (AppConfig.useMock) {
       await Future.delayed(const Duration(milliseconds: 800));
       await _applyMockState(email: email, role: 'STUDENT');
@@ -22,26 +26,25 @@ class AuthService {
     }
 
     try {
-      final response = await http
-          .post(
-            Uri.parse('${AppConfig.apiUrl}/auth/login'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email, 'password': password}),
-          )
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.post(
+        '/auth/login',
+        {'email': email, 'password': password},
+      );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         await AuthState.instance.setFromResponse(data);
+        // Fetch full profile to populate full_name (login response omits it).
+        await StudentProfileService.instance.getMyProfile();
         return AuthResult.success(role: AuthState.instance.role ?? 'STUDENT');
       }
 
-      return AuthResult.error(
-        _extractMessage(data, response.statusCode),
-      );
-    } on Exception catch (e) {
-      return AuthResult.error(_friendlyError(e));
+      return AuthResult.error(_extractMessage(data, response.statusCode));
+    } on StateError catch (e) {
+      return AuthResult.error(e.message);
+    } catch (e) {
+      return AuthResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -52,6 +55,10 @@ class AuthService {
     required String password,
     String role = 'STUDENT',
   }) async {
+    if (!email.contains('@') || !email.contains('.')) {
+      return AuthResult.error('Please enter a valid email address.');
+    }
+
     if (AppConfig.useMock) {
       await Future.delayed(const Duration(milliseconds: 800));
       await _applyMockState(email: email, role: role);
@@ -59,13 +66,10 @@ class AuthService {
     }
 
     try {
-      final response = await http
-          .post(
-            Uri.parse('${AppConfig.apiUrl}/auth/signup'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email, 'password': password, 'role': role}),
-          )
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.post(
+        '/auth/signup',
+        {'email': email, 'password': password, 'role': role},
+      );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -75,8 +79,10 @@ class AuthService {
       }
 
       return AuthResult.error(_extractMessage(data, response.statusCode));
-    } on Exception catch (e) {
-      return AuthResult.error(_friendlyError(e));
+    } on StateError catch (e) {
+      return AuthResult.error(e.message);
+    } catch (e) {
+      return AuthResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -102,14 +108,6 @@ class AuthService {
     final raw = data['message'];
     if (raw is List) return raw.first.toString();
     return raw?.toString() ?? 'Request failed ($statusCode)';
-  }
-
-  String _friendlyError(Exception e) {
-    final msg = e.toString();
-    if (msg.contains('SocketException') || msg.contains('TimeoutException')) {
-      return 'No internet connection. Please check your network.';
-    }
-    return 'Something went wrong. Please try again.';
   }
 }
 

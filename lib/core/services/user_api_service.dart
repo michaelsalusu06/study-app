@@ -1,12 +1,14 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../constants/app_config.dart';
+import '../network/api_client.dart';
 import '../../data/dummy_data.dart';
 import '../../models/booking_model.dart';
 import '../../models/tutor_profile.dart';
 import 'auth_state.dart';
+
+// Re-export chat models so existing import paths continue to work.
+export '../../models/chat_models.dart';
 
 class UserApiService {
   UserApiService._();
@@ -33,13 +35,11 @@ class UserApiService {
     if (role != null) body['role'] = role;
 
     try {
-      final response = await http
-          .patch(
-            Uri.parse('${AppConfig.apiUrl}/user/update/profile'),
-            headers: AuthState.instance.authHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.patch(
+        '/user/update/profile',
+        body,
+        requiresAuth: true,
+      );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -49,8 +49,10 @@ class UserApiService {
 
       final message = data['message']?.toString() ?? 'Update failed (${response.statusCode})';
       return UpdateProfileResult.error(message);
+    } on StateError catch (e) {
+      return UpdateProfileResult.error(e.message);
     } catch (e) {
-      return UpdateProfileResult.error('Network error. Please try again.');
+      return UpdateProfileResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -80,13 +82,11 @@ class UserApiService {
     if (subject != null && subject.isNotEmpty) queryParams['subject'] = subject;
     if (maxPrice != null) queryParams['maxCoins'] = maxPrice.toString();
 
-    final uri = Uri.parse('${AppConfig.apiUrl}/user/tutors')
-        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-
     try {
-      final response = await http
-          .get(uri, headers: {'Content-Type': 'application/json'})
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.get(
+        '/user/tutors',
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+      );
 
       if (response.statusCode == 200) {
         final list = jsonDecode(response.body) as List;
@@ -96,20 +96,18 @@ class UserApiService {
       }
 
       return TutorListResult.error('Failed to load tutors (${response.statusCode})');
+    } on StateError catch (e) {
+      return TutorListResult.error(e.message);
     } catch (e) {
-      return TutorListResult.error('Network error. Please try again.');
+      return TutorListResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
   // ─── Get Tutor Detail ─────────────────────────────────────────────────────
 
   Future<TutorDetailResult> getTutorDetail(String tutorId) async {
-    final uri = Uri.parse('${AppConfig.apiUrl}/user/tutor/$tutorId');
-
     try {
-      final response = await http
-          .get(uri, headers: {'Content-Type': 'application/json'})
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.get('/user/tutor/$tutorId');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -117,8 +115,10 @@ class UserApiService {
       }
 
       return TutorDetailResult.error('Failed to load tutor (${response.statusCode})');
+    } on StateError catch (e) {
+      return TutorDetailResult.error(e.message);
     } catch (e) {
-      return TutorDetailResult.error('Network error. Please try again.');
+      return TutorDetailResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -138,13 +138,12 @@ class UserApiService {
     if (from != null) queryParams['from'] = from;
     if (to != null) queryParams['to'] = to;
 
-    final uri = Uri.parse('${AppConfig.apiUrl}/booking/student')
-        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-
     try {
-      final response = await http
-          .get(uri, headers: AuthState.instance.authHeaders)
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.get(
+        '/booking/student',
+        queryParams: queryParams.isNotEmpty ? queryParams : null,
+        requiresAuth: true,
+      );
 
       if (response.statusCode == 200) {
         final list = jsonDecode(response.body) as List;
@@ -154,8 +153,10 @@ class UserApiService {
       }
 
       return BookingListResult.error('Failed to load bookings (${response.statusCode})');
+    } on StateError catch (e) {
+      return BookingListResult.error(e.message);
     } catch (e) {
-      return BookingListResult.error('Network error. Please try again.');
+      return BookingListResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -167,12 +168,10 @@ class UserApiService {
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/join'),
-            headers: AuthState.instance.authHeaders,
-          )
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.get(
+        '/booking/$bookingId/join',
+        requiresAuth: true,
+      );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -185,8 +184,10 @@ class UserApiService {
 
       final msg = data['message']?.toString() ?? 'Cannot join (${response.statusCode})';
       return JoinInfoResult.error(msg);
+    } on StateError catch (e) {
+      return JoinInfoResult.error(e.message);
     } catch (e) {
-      return JoinInfoResult.error('Network error. Please try again.');
+      return JoinInfoResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -198,12 +199,10 @@ class UserApiService {
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse('${AppConfig.apiUrl}/messages/conversations'),
-            headers: AuthState.instance.authHeaders,
-          )
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.get(
+        '/messages/conversations',
+        requiresAuth: true,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -218,8 +217,10 @@ class UserApiService {
       }
 
       return ChatThreadListResult.error('Failed to load chats (${response.statusCode})');
+    } on StateError catch (e) {
+      return ChatThreadListResult.error(e.message);
     } catch (e) {
-      return ChatThreadListResult.error('Network error. Please try again.');
+      return ChatThreadListResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -231,12 +232,10 @@ class UserApiService {
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse('${AppConfig.apiUrl}/messages/conversation/$otherId'),
-            headers: AuthState.instance.authHeaders,
-          )
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.get(
+        '/messages/conversation/$otherId',
+        requiresAuth: true,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -252,8 +251,10 @@ class UserApiService {
       }
 
       return ChatMessageListResult.error('Failed to load messages (${response.statusCode})');
+    } on StateError catch (e) {
+      return ChatMessageListResult.error(e.message);
     } catch (e) {
-      return ChatMessageListResult.error('Network error. Please try again.');
+      return ChatMessageListResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -268,20 +269,25 @@ class UserApiService {
       return SendMessageResult.error('Not authenticated.');
     }
 
+    final trimmed = content.trim();
+    if (trimmed.isEmpty) return SendMessageResult.error('Message cannot be empty.');
+    if (trimmed.length > AppConfig.maxMessageLength) {
+      return SendMessageResult.error(
+          'Message too long. Maximum ${AppConfig.maxMessageLength} characters.');
+    }
+
     final body = <String, dynamic>{
       'to_id': toId,
-      'content': content,
+      'content': trimmed,
       if (bookingId != null) 'booking_id': bookingId,
     };
 
     try {
-      final response = await http
-          .post(
-            Uri.parse('${AppConfig.apiUrl}/messages'),
-            headers: AuthState.instance.authHeaders,
-            body: jsonEncode(body),
-          )
-          .timeout(AppConfig.requestTimeout);
+      final response = await ApiClient.instance.post(
+        '/messages',
+        body,
+        requiresAuth: true,
+      );
 
       final data = jsonDecode(response.body);
 
@@ -293,26 +299,10 @@ class UserApiService {
 
       return SendMessageResult.error(
           data['message']?.toString() ?? 'Failed to send (${response.statusCode})');
+    } on StateError catch (e) {
+      return SendMessageResult.error(e.message);
     } catch (e) {
-      return SendMessageResult.error('Network error. Please try again.');
-    }
-  }
-  // ─── Coin History ─────────────────────────────────────────────────────────
-
-  Future<CoinHistoryResult> getCoinHistory() async {
-    if (!AuthState.instance.isLoggedIn) return CoinHistoryResult.error('Not authenticated.');
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConfig.apiUrl}/coins/history'),
-        headers: AuthState.instance.authHeaders,
-      );
-      if (response.statusCode == 200) {
-        final list = jsonDecode(response.body) as List;
-        return CoinHistoryResult.success(list.cast<Map<String, dynamic>>());
-      }
-      return CoinHistoryResult.error('Failed to load history (${response.statusCode})');
-    } catch (e) {
-      return CoinHistoryResult.error('Network error.');
+      return SendMessageResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
@@ -320,35 +310,45 @@ class UserApiService {
 
   Future<SimpleResult> cancelBooking(String bookingId) async {
     try {
-      final response = await http.patch(
-        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/cancel'),
-        headers: AuthState.instance.authHeaders,
+      final response = await ApiClient.instance.patch(
+        '/booking/$bookingId/cancel',
+        {},
+        requiresAuth: true,
       );
-      return SimpleResult(success: response.statusCode == 200, message: jsonDecode(response.body)['message']?.toString());
-    } catch (_) {
-      return SimpleResult(success: false, message: 'Network error.');
+      return SimpleResult(
+        success: response.statusCode == 200,
+        message: jsonDecode(response.body)['message']?.toString(),
+      );
+    } on StateError catch (e) {
+      return SimpleResult(success: false, message: e.message);
+    } catch (e) {
+      return SimpleResult(success: false, message: ApiClient.instance.friendlyError(e));
     }
   }
 
   Future<SimpleResult> proposeReschedule(String bookingId, DateTime newStart) async {
     try {
-      final response = await http.patch(
-        Uri.parse('${AppConfig.apiUrl}/booking/$bookingId/propose-reschedule'),
-        headers: AuthState.instance.authHeaders,
-        body: jsonEncode({'newStartAt': newStart.toIso8601String()}),
+      final response = await ApiClient.instance.patch(
+        '/booking/$bookingId/propose-reschedule',
+        {'newStartAt': newStart.toIso8601String()},
+        requiresAuth: true,
       );
-      return SimpleResult(success: response.statusCode == 200, message: jsonDecode(response.body)['message']?.toString());
-    } catch (_) {
-      return SimpleResult(success: false, message: 'Network error.');
+      return SimpleResult(
+        success: response.statusCode == 200,
+        message: jsonDecode(response.body)['message']?.toString(),
+      );
+    } on StateError catch (e) {
+      return SimpleResult(success: false, message: e.message);
+    } catch (e) {
+      return SimpleResult(success: false, message: ApiClient.instance.friendlyError(e));
     }
   }
 
   // ─── Avatar Upload ────────────────────────────────────────────────────────
 
   Future<SimpleResult> updateAvatar(String imageUrl) async {
-    // Note: This assumes the image is already uploaded or we're sending a URL.
-    // Real multipart upload would use http.MultipartRequest.
-    return updateProfile(avatarUrl: imageUrl).then((res) => SimpleResult(success: res.success, message: res.errorMessage));
+    return updateProfile(avatarUrl: imageUrl).then(
+        (res) => SimpleResult(success: res.success, message: res.errorMessage));
   }
 }
 
@@ -360,25 +360,12 @@ class SimpleResult {
   SimpleResult({required this.success, this.message});
 }
 
-class CoinHistoryResult {
-  final bool success;
-  final List<Map<String, dynamic>>? history;
-  final String? errorMessage;
-  CoinHistoryResult._({required this.success, this.history, this.errorMessage});
-  factory CoinHistoryResult.success(List<Map<String, dynamic>> data) => CoinHistoryResult._(success: true, history: data);
-  factory CoinHistoryResult.error(String msg) => CoinHistoryResult._(success: false, errorMessage: msg);
-}
-
 class UpdateProfileResult {
   final bool success;
   final Map<String, dynamic>? user;
   final String? errorMessage;
 
-  const UpdateProfileResult._({
-    required this.success,
-    this.user,
-    this.errorMessage,
-  });
+  const UpdateProfileResult._({required this.success, this.user, this.errorMessage});
 
   factory UpdateProfileResult.success(Map<String, dynamic> user) =>
       UpdateProfileResult._(success: true, user: user);
@@ -392,11 +379,7 @@ class TutorListResult {
   final List<TutorProfile>? tutors;
   final String? errorMessage;
 
-  const TutorListResult._({
-    required this.success,
-    this.tutors,
-    this.errorMessage,
-  });
+  const TutorListResult._({required this.success, this.tutors, this.errorMessage});
 
   factory TutorListResult.success(List<TutorProfile> tutors) =>
       TutorListResult._(success: true, tutors: tutors);
@@ -410,11 +393,7 @@ class TutorDetailResult {
   final Map<String, dynamic>? tutor;
   final String? errorMessage;
 
-  const TutorDetailResult._({
-    required this.success,
-    this.tutor,
-    this.errorMessage,
-  });
+  const TutorDetailResult._({required this.success, this.tutor, this.errorMessage});
 
   factory TutorDetailResult.success(Map<String, dynamic> tutor) =>
       TutorDetailResult._(success: true, tutor: tutor);
@@ -428,11 +407,7 @@ class BookingListResult {
   final List<Booking>? bookings;
   final String? errorMessage;
 
-  const BookingListResult._({
-    required this.success,
-    this.bookings,
-    this.errorMessage,
-  });
+  const BookingListResult._({required this.success, this.bookings, this.errorMessage});
 
   factory BookingListResult.success(List<Booking> bookings) =>
       BookingListResult._(success: true, bookings: bookings);
@@ -454,114 +429,19 @@ class JoinInfoResult {
     this.errorMessage,
   });
 
-  factory JoinInfoResult.success({
-    required String meetingUrl,
-    String? roomPassword,
-  }) =>
+  factory JoinInfoResult.success({required String meetingUrl, String? roomPassword}) =>
       JoinInfoResult._(success: true, meetingUrl: meetingUrl, roomPassword: roomPassword);
 
   factory JoinInfoResult.error(String message) =>
       JoinInfoResult._(success: false, errorMessage: message);
 }
 
-// ─── Chat Models ──────────────────────────────────────────────────────────────
-
-class ChatUser {
-  final String id;
-  final String? fullName;
-  final String? username;
-  final String? avatarUrl;
-  final String? status;
-
-  const ChatUser({
-    required this.id,
-    this.fullName,
-    this.username,
-    this.avatarUrl,
-    this.status,
-  });
-
-  factory ChatUser.fromJson(Map<String, dynamic> json) {
-    // Handle both snake_case and camelCase, and generic 'name' field
-    final name = json['full_name']?.toString() ?? 
-                 json['fullName']?.toString() ?? 
-                 json['name']?.toString();
-    
-    return ChatUser(
-      id: json['id']?.toString() ?? '',
-      fullName: name,
-      username: json['username']?.toString() ?? json['userName']?.toString(),
-      avatarUrl: json['avatar_url']?.toString() ?? json['avatarUrl']?.toString(),
-      status: json['user_status']?.toString() ?? json['status']?.toString(),
-    );
-  }
-
-  String get displayName {
-    if (fullName != null && fullName!.trim().isNotEmpty) return fullName!;
-    if (username != null && username!.trim().isNotEmpty) return username!;
-    return 'User ${id.length > 4 ? id.substring(0, 4) : id}';
-  }
-}
-
-class ChatThread {
-  final ChatUser partner;
-  final ChatMessage lastMessage;
-  final int unreadCount;
-
-  const ChatThread({
-    required this.partner,
-    required this.lastMessage,
-    required this.unreadCount,
-  });
-
-  factory ChatThread.fromJson(Map<String, dynamic> json) => ChatThread(
-        partner: ChatUser.fromJson(
-            json['partner'] is Map<String, dynamic> ? json['partner'] : {}),
-        lastMessage: ChatMessage.fromJson(
-            json['last_message'] is Map<String, dynamic> ? json['last_message'] : {}),
-        unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
-      );
-}
-
-class ChatMessage {
-  final String id;
-  final String fromId;
-  final String? toId;
-  final String content;
-  final bool isRead;
-  final DateTime createdAt;
-
-  const ChatMessage({
-    required this.id,
-    required this.fromId,
-    this.toId,
-    required this.content,
-    required this.isRead,
-    required this.createdAt,
-  });
-
-  factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        id: json['id']?.toString() ?? '',
-        fromId: json['from_id']?.toString() ?? '',
-        toId: json['to_id']?.toString(),
-        content: json['content']?.toString() ?? '',
-        isRead: json['is_read'] is bool ? json['is_read'] : false,
-        createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-      );
-}
-
-// ─── Chat Result Classes ──────────────────────────────────────────────────────
-
 class ChatThreadListResult {
   final bool success;
   final List<ChatThread>? threads;
   final String? errorMessage;
 
-  const ChatThreadListResult._({
-    required this.success,
-    this.threads,
-    this.errorMessage,
-  });
+  const ChatThreadListResult._({required this.success, this.threads, this.errorMessage});
 
   factory ChatThreadListResult.success(List<ChatThread> threads) =>
       ChatThreadListResult._(success: true, threads: threads);
@@ -575,11 +455,7 @@ class ChatMessageListResult {
   final List<ChatMessage>? messages;
   final String? errorMessage;
 
-  const ChatMessageListResult._({
-    required this.success,
-    this.messages,
-    this.errorMessage,
-  });
+  const ChatMessageListResult._({required this.success, this.messages, this.errorMessage});
 
   factory ChatMessageListResult.success(List<ChatMessage> messages) =>
       ChatMessageListResult._(success: true, messages: messages);
@@ -593,11 +469,7 @@ class SendMessageResult {
   final ChatMessage? message;
   final String? errorMessage;
 
-  const SendMessageResult._({
-    required this.success,
-    this.message,
-    this.errorMessage,
-  });
+  const SendMessageResult._({required this.success, this.message, this.errorMessage});
 
   factory SendMessageResult.success(ChatMessage message) =>
       SendMessageResult._(success: true, message: message);

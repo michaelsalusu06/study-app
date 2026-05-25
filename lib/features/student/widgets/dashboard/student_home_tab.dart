@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/services/auth_state.dart';
+import '../../../../core/services/coin_service.dart';
 import '../../../../core/services/user_api_service.dart';
 import '../../../../core/services/student_profile_service.dart';
 import '../../../../core/services/tutor_browse_service.dart';
@@ -34,6 +36,7 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
   String? _searchQuery;
   String? _selectedTopic;
   double? _maxCoins;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -41,6 +44,12 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
     _loadAll();
     _loadNotifCount();
     _refreshProfile();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadAll() async {
@@ -99,14 +108,15 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
 
   Future<void> _refreshProfile() async {
     await StudentProfileService.instance.getMyProfile();
+    // getMyProfile doesn't return coins_balance; call balance endpoint separately.
+    await CoinService.instance.getCoinBalance();
     if (mounted) setState(() {});
   }
 
   void _onSearch(String query) {
-    setState(() {
-      _searchQuery = query.isEmpty ? null : query;
-    });
-    _loadAll();
+    setState(() { _searchQuery = query.isEmpty ? null : query; });
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), _loadAll);
   }
 
   void _onTopicTap(String topic) {

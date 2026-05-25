@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
-import '../../../core/services/user_api_service.dart';
+import '../../../core/services/coin_service.dart';
+import '../../../core/widgets/common/api_error_snackbar.dart';
 
 class CoinHistoryScreen extends StatefulWidget {
   const CoinHistoryScreen({super.key});
@@ -24,7 +25,11 @@ class _CoinHistoryScreenState extends State<CoinHistoryScreen> {
 
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
-    final result = await UserApiService.instance.getCoinHistory();
+
+    // Refresh live balance first so the coin chip on other screens stays current.
+    await CoinService.instance.getCoinBalance();
+
+    final result = await CoinService.instance.getCoinHistory();
     if (!mounted) return;
     setState(() {
       _isLoading = false;
@@ -32,6 +37,7 @@ class _CoinHistoryScreenState extends State<CoinHistoryScreen> {
         _history = result.history ?? [];
       } else {
         _error = result.errorMessage;
+        ApiErrorSnackbar.show(context, result.errorMessage ?? 'Failed to load history');
       }
     });
   }

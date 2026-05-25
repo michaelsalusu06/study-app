@@ -2,9 +2,33 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_sizes.dart';
 import '../../../../core/services/auth_state.dart';
+import '../../../../core/services/coin_service.dart';
+import '../../../../core/widgets/common/api_error_snackbar.dart';
 
-class StudentProfileTab extends StatelessWidget {
+class StudentProfileTab extends StatefulWidget {
   const StudentProfileTab({super.key});
+
+  @override
+  State<StudentProfileTab> createState() => _StudentProfileTabState();
+}
+
+class _StudentProfileTabState extends State<StudentProfileTab> {
+  @override
+  void initState() {
+    super.initState();
+    _refreshBalance();
+  }
+
+  Future<void> _refreshBalance() async {
+    final result = await CoinService.instance.getCoinBalance();
+    if (!mounted) return;
+    if (!result.success) {
+      ApiErrorSnackbar.show(
+          context, result.errorMessage ?? 'Could not refresh coin balance');
+    } else {
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../constants/app_config.dart';
+
+import '../network/api_client.dart';
 import 'auth_state.dart';
 
-// ─────────────────────────────────────────────────────────────
-// Result types
-// ─────────────────────────────────────────────────────────────
+// ─── Result types ─────────────────────────────────────────────────────────────
 
 class GetMyProfileResult {
   final bool success;
@@ -25,71 +23,40 @@ class GetMyProfileResult {
       GetMyProfileResult._(success: false, errorMessage: message);
 }
 
-// ─────────────────────────────────────────────────────────────
-// StudentProfileService — singleton
-// ─────────────────────────────────────────────────────────────
+// ─── StudentProfileService — singleton ───────────────────────────────────────
 
-/// Fetches and manages the logged-in student's own profile data.
-///
-/// Usage:
-///   final result = await StudentProfileService.instance.getMyProfile();
-///   if (result.success) {
-///     final name = result.profile!['full_name'];
-///   }
+/// Fetches and manages the logged-in user's own profile data.
 class StudentProfileService {
   StudentProfileService._();
   static final instance = StudentProfileService._();
 
-  // ── Get own profile ─────────────────────────────────────────
-  /// GET /user/profile/me  🔒 JWT required
+  // ── GET /auth/me ───────────────────────────────────────────────────────────
+
+  /// GET /auth/me  🔒 JWT required
   ///
-  /// Returns the authenticated user's full profile.
-  ///
-  /// Response shape:
-  ///   {
-  ///     "id": "uuid",
-  ///     "email": "john@example.com",
-  ///     "full_name": "John Doe",
-  ///     "username": "john_doe",
-  ///     "bio": "...",
-  ///     "avatar_url": "https://...",
-  ///     "role": "STUDENT",
-  ///     "subjects": [],
-  ///     "overall_rating": null,
-  ///     "student_rating": null,
-  ///     "rating_count": 0,
-  ///   }
+  /// Note: the server does NOT return coins_balance here.
+  /// Call CoinService.getCoinBalance() separately to refresh balance.
   Future<GetMyProfileResult> getMyProfile() async {
     if (!AuthState.instance.isLoggedIn) {
       return GetMyProfileResult.error('You must be logged in.');
     }
 
     try {
-      final response = await http.get(
-        Uri.parse('${AppConfig.apiUrl}/auth/me'),
-        headers: AuthState.instance.authHeaders,
-      );
-
+      final response = await ApiClient.instance.get('/auth/me', requiresAuth: true);
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        final profileData = data as Map<String, dynamic>;
-        
-        // --- Deep Scan for Coin Balance ---
-        // 1. Check top level
-        // 2. Check inside 'user' object if it exists
-        final nestedUser = profileData['user'] as Map<String, dynamic>?;
-        
-        final dynamic balance = profileData['coins_balance'] 
-                             ?? profileData['coin_balance']
-                             ?? nestedUser?['coins_balance']
-                             ?? nestedUser?['coin_balance']
-                             ?? profileData['balance'];
-        
-        if (balance != null) {
-          AuthState.instance.coinsBalance = (balance as num).toInt();
+        final profile = data as Map<String, dynamic>;
+
+        // Sync name/avatar into AuthState from the profile response.
+        final fullName = profile['full_name']?.toString();
+        if (fullName != null && fullName.isNotEmpty) {
+          AuthState.instance.fullName = fullName;
         }
-        return GetMyProfileResult.success(profileData);
+        final avatar = profile['avatar_url']?.toString();
+        if (avatar != null) AuthState.instance.avatarUrl = avatar;
+
+        return GetMyProfileResult.success(profile);
       }
 
       if (response.statusCode == 401) {
@@ -102,43 +69,42 @@ class StudentProfileService {
 
       final message = data['message'] ?? data['error'] ?? 'Failed to load profile.';
       return GetMyProfileResult.error(message.toString());
+    } on StateError catch (e) {
+      return GetMyProfileResult.error(e.message);
     } catch (e) {
-      return GetMyProfileResult.error('Network error: $e');
+      return GetMyProfileResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
-//* continue this code later
-// Future<GetCoins> getCoin() async {
-//   try {
-//     final response = await http.get(Uri.parse('${AppConfig.apiUrl}/coins/balance'));
-//   } catch (e) {
-//     return e      
-//   }
-// }
+  // ── Notifications ──────────────────────────────────────────────────────────
 
-  // ── Get notifications ───────────────────────────────────────
   Future<NotificationListResult> getNotifications({int page = 1}) async {
     try {
-      final response = await http.get(
-        Uri.parse('${AppConfig.apiUrl}/notifications?page=$page'),
-        headers: AuthState.instance.authHeaders,
+      final response = await ApiClient.instance.get(
+        '/notifications',
+        queryParams: {'page': page.toString()},
+        requiresAuth: true,
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         final list = (data['data'] as List).cast<Map<String, dynamic>>();
         return NotificationListResult.success(list);
       }
-      return NotificationListResult.error(data['message']?.toString() ?? 'Error');
+      return NotificationListResult.error(
+          data['message']?.toString() ?? 'Error (${response.statusCode})');
+    } on StateError catch (e) {
+      return NotificationListResult.error(e.message);
     } catch (e) {
-      return NotificationListResult.error('Network error: $e');
+      return NotificationListResult.error(ApiClient.instance.friendlyError(e));
     }
   }
 
   Future<bool> markSeen(String id) async {
     try {
-      final response = await http.patch(
-        Uri.parse('${AppConfig.apiUrl}/notifications/$id/seen'),
-        headers: AuthState.instance.authHeaders,
+      final response = await ApiClient.instance.patch(
+        '/notifications/$id/seen',
+        {},
+        requiresAuth: true,
       );
       return response.statusCode == 200;
     } catch (_) {
@@ -148,9 +114,10 @@ class StudentProfileService {
 
   Future<bool> markAllSeen() async {
     try {
-      final response = await http.patch(
-        Uri.parse('${AppConfig.apiUrl}/notifications/seen-all'),
-        headers: AuthState.instance.authHeaders,
+      final response = await ApiClient.instance.patch(
+        '/notifications/seen-all',
+        {},
+        requiresAuth: true,
       );
       return response.statusCode == 200;
     } catch (_) {
@@ -160,9 +127,9 @@ class StudentProfileService {
 
   Future<int> getUnseenCount() async {
     try {
-      final response = await http.get(
-        Uri.parse('${AppConfig.apiUrl}/notifications/unseen-count'),
-        headers: AuthState.instance.authHeaders,
+      final response = await ApiClient.instance.get(
+        '/notifications/unseen-count',
+        requiresAuth: true,
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body)['unseen_count'] ?? 0;
@@ -176,9 +143,12 @@ class NotificationListResult {
   final bool success;
   final List<Map<String, dynamic>>? notifications;
   final String? errorMessage;
+
   NotificationListResult._({required this.success, this.notifications, this.errorMessage});
+
   factory NotificationListResult.success(List<Map<String, dynamic>> list) =>
       NotificationListResult._(success: true, notifications: list);
+
   factory NotificationListResult.error(String msg) =>
       NotificationListResult._(success: false, errorMessage: msg);
 }

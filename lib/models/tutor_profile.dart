@@ -1,3 +1,5 @@
+import '../core/constants/app_config.dart';
+
 class TutorProfile {
   final String id;
   final String? fullName;
@@ -39,7 +41,7 @@ class TutorProfile {
 
   String get formattedPrice {
     if (bookPrice == 0) return 'Free';
-    return '\$${bookPrice.toStringAsFixed(0)}/hr';
+    return '${AppConfig.currencySymbol}${bookPrice.toStringAsFixed(0)}/hr';
   }
 
   String get firstSubject => subjects.isNotEmpty ? subjects.first : '';

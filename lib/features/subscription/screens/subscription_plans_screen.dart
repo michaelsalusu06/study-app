@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_config.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/widgets/buttons/primary_button.dart';
 
@@ -38,8 +39,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     ),
     SubscriptionPlan(
       name: 'Premium',
-      monthlyPrice: 19.99,
-      yearlyPrice: 199.99,
+      monthlyPrice: AppConfig.premiumMonthlyPrice,
+      yearlyPrice: AppConfig.premiumYearlyPrice,
       description: 'Best for serious learners',
       features: [
         'All free features',
@@ -54,8 +55,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     ),
     SubscriptionPlan(
       name: 'Pro',
-      monthlyPrice: 39.99,
-      yearlyPrice: 399.99,
+      monthlyPrice: AppConfig.proMonthlyPrice,
+      yearlyPrice: AppConfig.proYearlyPrice,
       description: 'For you that want to waste some money',
       features: [
         'All Premium features',
@@ -378,7 +379,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '\Rp${price.toStringAsFixed(0)}',
+                              '${AppConfig.currencySymbol}${price.toStringAsFixed(0)}',
                               style: textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: isSelected
@@ -399,7 +400,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         ),
                         if (_isYearly && price > 0)
                           Text(
-                            '\$${(price / 12).toStringAsFixed(2)}/mo',
+                            '${AppConfig.currencySymbol}${(price / 12).toStringAsFixed(2)}/mo',
                             style: textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
