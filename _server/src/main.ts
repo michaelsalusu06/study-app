@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const express = require('express');
 import { AppModule } from './app.module';
@@ -16,7 +17,20 @@ async function bootstrap() {
 async function initApp() {
   const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp), { logger: ['log', 'error', 'warn'] });
 
-  app.enableCors();
+  app.use(helmet());
+
+  const allowedOrigins = (process.env.CORS_ORIGIN ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

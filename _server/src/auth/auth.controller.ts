@@ -1,5 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -10,31 +11,37 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @SkipThrottle()
   @Get()
   checkPath() {
     return "You're at the right path, continue!";
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('signup')
   signUp(@Body() body: SignUpDto) {
     return this.authService.signUp(body.email, body.password, body.role);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('login')
   login(@Body() body: LoginDto) {
     return this.authService.login(body.email, body.password);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('google')
   googleLogin(@Body() body: GoogleAuthDto) {
     return this.authService.googleLogin(body.idToken, body.role);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('admin/login')
   adminLogin(@Body() body: AdminLoginDto) {
     return this.authService.adminLogin(body.admin_id, body.password);
   }
 
+  @SkipThrottle()
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   getMe(@Request() req: any) {

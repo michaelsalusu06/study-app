@@ -5,6 +5,7 @@ import {
   Headers,
   HttpCode,
 } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
 import { PrismaService } from 'src/prisma.service';
 
 @Controller('internal')
@@ -12,9 +13,12 @@ export class InternalController {
   constructor(private prisma: PrismaService) {}
 
   private checkSecret(secret: string) {
-    if (secret !== process.env.INTERNAL_SECRET) {
+    const expected = process.env.INTERNAL_SECRET ?? '';
+    if (!secret || secret.length !== expected.length) {
       throw new ForbiddenException('Unauthorized.');
     }
+    const match = timingSafeEqual(Buffer.from(secret), Buffer.from(expected));
+    if (!match) throw new ForbiddenException('Unauthorized.');
   }
 
   // POST /internal/notify-upcoming-sessions
