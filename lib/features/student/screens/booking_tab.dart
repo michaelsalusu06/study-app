@@ -101,7 +101,7 @@ class _BookingTabState extends State<BookingTab>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSizes.lg),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
       ),
       child: TabBar(
@@ -232,7 +232,7 @@ class _CourseCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   backgroundImage: booking.tutorAvatarUrl != null
                       ? NetworkImage(booking.tutorAvatarUrl!)
                       : null,
@@ -389,7 +389,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.07),
+        color: AppColors.primary.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

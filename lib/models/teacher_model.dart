@@ -35,7 +35,7 @@ class TeacherModel {
   /// Get formatted hourly rate
   String get formattedHourlyRate {
     if (hourlyRate == null) return '';
-    return '\$${hourlyRate.toStringAsFixed(2)}/hr';
+    return '\$${hourlyRate!.toStringAsFixed(2)}/hr';
   }
 
   /// Copy with new values

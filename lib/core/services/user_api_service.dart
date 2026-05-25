@@ -100,7 +100,6 @@ class UserApiService {
       return TutorListResult.error('Network error. Please try again.');
     }
   }
-}
 
   // ─── Get Student Bookings ─────────────────────────────────────────────────
 

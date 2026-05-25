@@ -81,7 +81,6 @@ class TextInput extends StatelessWidget {
   double get _fontSize => size == InputSize.small ? 14 : 16;
 
   
-  double get _effectiveRadius => borderRadius ?? AppSizes.radiusMd;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +91,7 @@ class TextInput extends StatelessWidget {
     final effectiveFillColor = fillColor ?? colorScheme.surface;
     final effectiveBorderColor = borderColor ?? colorScheme.outline;
     // Compute once and reuse across all 5 border instances
-    final br = br;
+    final br = BorderRadius.circular(borderRadius ?? AppSizes.radiusMd);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +103,7 @@ class TextInput extends StatelessWidget {
             style: textTheme.titleSmall?.copyWith(
               color: enabled
                   ? colorScheme.onSurface
-                  : colorScheme.onSurface.withOpacity(0.5),
+                  : colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: AppSizes.xs),
@@ -132,7 +131,7 @@ class TextInput extends StatelessWidget {
             fontSize: _fontSize,
             color: enabled
                 ? colorScheme.onSurface
-                : colorScheme.onSurface.withOpacity(0.5),
+                : colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           decoration: InputDecoration(
             hintText: hint,
@@ -150,7 +149,7 @@ class TextInput extends StatelessWidget {
                     size: _fontSize + 4,
                     color: borderColor ?? (enabled
                             ? colorScheme.onSurfaceVariant
-                            : colorScheme.onSurface.withOpacity(0.38)),
+                            : colorScheme.onSurface.withValues(alpha: 0.38)),
                   )
                 : null,
             suffixIcon: suffixIcon != null
@@ -160,7 +159,7 @@ class TextInput extends StatelessWidget {
                       size: _fontSize + 4,
                       color: borderColor ?? (enabled
                               ? colorScheme.onSurfaceVariant
-                              : colorScheme.onSurface.withOpacity(0.38)),
+                              : colorScheme.onSurface.withValues(alpha: 0.38)),
                     ),
                     onPressed: onSuffixIconPressed,
                   )
@@ -208,7 +207,7 @@ class TextInput extends StatelessWidget {
                 ? OutlineInputBorder(
                     borderRadius: br,
                     borderSide: BorderSide(
-                      color: colorScheme.onSurface.withOpacity(0.12),
+                      color: colorScheme.onSurface.withValues(alpha: 0.12),
                     ),
                   )
                 : OutlineInputBorder(
@@ -216,7 +215,7 @@ class TextInput extends StatelessWidget {
                     borderSide: BorderSide.none,
                   ),
             hintStyle: textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),
             errorStyle: textTheme.bodySmall?.copyWith(
               color: colorScheme.error,
