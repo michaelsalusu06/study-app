@@ -21,17 +21,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   final List<PaymentMethod> _paymentMethods = [
     PaymentMethod(
-      name: 'Credit/Debit Card',
+      name: 'e-wallet',
       icon: Icons.credit_card_rounded,
       type: PaymentType.card,
     ),
     PaymentMethod(
-      name: 'PayPal',
+      name: 'QRIS',
       icon: Icons.account_balance_wallet_rounded,
       type: PaymentType.paypal,
     ),
     PaymentMethod(
-      name: 'Bank Transfer',
+      name: 'Ask the government to pay',
       icon: Icons.account_balance_rounded,
       type: PaymentType.bank,
     ),
@@ -181,7 +181,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               Text(
-                '\$19.99',
+                '\Rp 19.99',
                 style: textTheme.bodyMedium,
               ),
             ],
@@ -197,7 +197,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               Text(
-                '\$0.00',
+                '\Rp0.00',
                 style: textTheme.bodyMedium,
               ),
             ],
@@ -215,7 +215,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               Text(
-                '\$19.99',
+                '\Rp 19.99',
                 style: textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: colorScheme.primary,
@@ -464,7 +464,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.md),
       child: PrimaryButton(
-        text: 'Pay \$19.99',
+        text: 'Pay \Rp 19.99',
         onPressed: () {
           Navigator.of(context).pushReplacementNamed('/payment-success');
         },
